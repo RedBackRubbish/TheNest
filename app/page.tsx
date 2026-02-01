@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/sidebar";
 import { MainStage } from "@/components/main-stage";
 import { GovernanceLog } from "@/components/governance-log";
 
+// The Nest Governance Deck - Sovereign Dark Theme
 export default function GovernanceDeck() {
   const [activeView, setActiveView] = useState("missions");
   const [isSessionActive, setIsSessionActive] = useState(false);
