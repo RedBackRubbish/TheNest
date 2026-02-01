@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Exclude Python backend files from the build
+  // Silence Turbopack error by acknowledging we have webpack config for dev
+  turbopack: {},
+  // Exclude Python backend files from the build (Webpack only)
   webpack: (config) => {
     config.watchOptions = {
       ignored: ['**/src/**', '**/protocol/**', '**/.venv/**', '**/venv/**'],
