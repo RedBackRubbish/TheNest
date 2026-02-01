@@ -1,0 +1,122 @@
+# =============================================================================
+# QUARANTINE ENFORCEMENT CI
+# =============================================================================
+# This workflow enforces the GOVERNED/UNGOVERNED namespace boundary.
+#
+# KERNEL INVARIANT:
+#   - Code in src/governed/ MUST NOT import from src/ungoverned/
+#   - Violations BLOCK the merge
+#   - No exceptions, no manual overrides
+#
+# CONSTITUTIONAL BASIS:
+#   Article 50: Martial Governance must be mechanically painful.
+#   This is that pain.
+# =============================================================================
+
+name: "🧯 Quarantine Check"
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - 'tools/quarantine_check.py'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - 'tools/quarantine_check.py'
+
+jobs:
+  quarantine-scan:
+    name: "Scan for Quarantine Violations"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+      
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: "🔍 Run Quarantine Scanner (Governed Namespace)"
+        run: |
+          echo "=============================================="
+          echo "QUARANTINE BOUNDARY CHECK"
+          echo "=============================================="
+          echo ""
+          echo "Scanning src/governed/ for forbidden imports..."
+          echo ""
+          python tools/quarantine_check.py --ci
+      
+      - name: "🔍 Run Quarantine Scanner (Strict Mode)"
+        run: |
+          echo ""
+          echo "=============================================="
+          echo "EXTENDED SCAN: All Source Files"
+          echo "=============================================="
+          echo ""
+          python tools/quarantine_check.py --strict --ci
+      
+      - name: "📊 Generate Scan Report"
+        if: failure()
+        run: |
+          echo ""
+          echo "=============================================="
+          echo "DETAILED VIOLATION REPORT"
+          echo "=============================================="
+          echo ""
+          python tools/quarantine_check.py --strict
+      
+      - name: "✅ Quarantine Intact"
+        if: success()
+        run: |
+          echo ""
+          echo "=============================================="
+          echo "✅ QUARANTINE BOUNDARY VERIFIED"
+          echo "=============================================="
+          echo ""
+          echo "No forbidden imports detected."
+          echo "GOVERNED namespace remains isolated from UNGOVERNED."
+          echo ""
+          echo "Constitutional compliance: AFFIRMED"
+
+  # ==========================================================================
+  # WATERMARK VERIFICATION
+  # ==========================================================================
+  watermark-check:
+    name: "Verify Ungoverned Watermarks"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+      
+      - name: "🏷️ Check Ungoverned Artifacts for Watermarks"
+        run: |
+          echo "=============================================="
+          echo "UNGOVERNED WATERMARK VERIFICATION"
+          echo "=============================================="
+          echo ""
+          
+          # Check if ungoverned namespace exists
+          if [ -d "src/ungoverned" ]; then
+            # Count Python files (excluding __init__.py)
+            UNGOVERNED_FILES=$(find src/ungoverned -name "*.py" ! -name "__init__.py" | wc -l | tr -d ' ')
+            
+            if [ "$UNGOVERNED_FILES" -gt 0 ]; then
+              echo "⚠️  Found $UNGOVERNED_FILES file(s) in UNGOVERNED namespace"
+              echo ""
+              echo "Files in quarantine:"
+              find src/ungoverned -name "*.py" ! -name "__init__.py" -exec echo "  - {}" \;
+              echo ""
+              echo "These files are under Martial Governance (Article 50)"
+              echo "Liability: KEEPER"
+            else
+              echo "✅ No ungoverned artifacts present"
+            fi
+          else
+            echo "✅ Ungoverned namespace does not exist yet"
+          fi

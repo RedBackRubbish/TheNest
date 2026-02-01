@@ -211,15 +211,37 @@ class TheElder:
             Even under Martial Law, precedent logging uses TheElder's
             exclusive write handle. The state of exception does not
             grant write access to any other entity.
+            
+        QUARANTINE ENFORCEMENT:
+            Any code artifacts generated under Article 50 are:
+            1. Watermarked with UNGOVERNED metadata
+            2. Destined for src/ungoverned/ namespace
+            3. Mechanically isolated from governed code
+            4. Signed with KEEPER liability
         """
         print("⚠️ STATE OF EXCEPTION DECLARED. ⚠️")
+        print("⚠️ Code generated will be QUARANTINED in src/ungoverned/ ⚠️")
         
-        # 1. Sign usage
+        # 1. Sign usage with UNGOVERNED watermark
         signature = UngovernedSigner.sign_ungoverned_artifact(mission_text)
         
-        # 2. Log void case (uses Elder's exclusive write handle)
+        # 2. Generate case ID for quarantined artifact
         case_id = f"CASE-VOID-{datetime.now().strftime('%Y-%m-%d')}-{str(uuid.uuid4())[:8]}"
         
+        # 3. Build UNGOVERNED watermark (for artifact metadata)
+        watermark = {
+            "zone": "UNGOVERNED",
+            "case_id": case_id,
+            "article": "Article 50: Martial Governance",
+            "liability": "KEEPER",
+            "constitutional_protection": False,
+            "senate_reviewed": False,
+            "timestamp": datetime.now().isoformat(),
+            "quarantine_path": "src/ungoverned/",
+            "warning": "This code bypassed agent governance. Use at your own risk."
+        }
+        
+        # 4. Log void case (uses Elder's exclusive write handle)
         precedent = PrecedentObject(
             case_id=case_id,
             question=mission_text,
@@ -227,7 +249,9 @@ class TheElder:
             deliberation=[], # No deliberation
             verdict={
                 "ruling": "UNGOVERNED", 
-                "principle_cited": "Article 50: Martial Governance"
+                "principle_cited": "Article 50: Martial Governance",
+                "quarantine_zone": "src/ungoverned/",
+                "watermark": watermark
             },
             appeal_history=[]
         )
@@ -237,9 +261,16 @@ class TheElder:
         
         return {
             "status": "UNGOVERNED",
+            "quarantine_zone": "src/ungoverned/",
             "artifact": {
                 "mission": mission_text,
-                "signature": signature
+                "signature": signature,
+                "watermark": watermark
             },
-            "history": ["KEEPER INVOKED ARTICLE 50", "AGENTS SUSPENDED", "CODE GENERATED UNDER WRIT OF EXPANSION"]
+            "history": [
+                "KEEPER INVOKED ARTICLE 50",
+                "AGENTS SUSPENDED", 
+                "CODE GENERATED UNDER WRIT OF EXPANSION",
+                "ARTIFACT QUARANTINED IN src/ungoverned/"
+            ]
         }

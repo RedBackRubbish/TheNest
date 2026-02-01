@@ -1,0 +1,37 @@
+#!/bin/bash
+# =============================================================================
+# QUARANTINE PRE-COMMIT HOOK
+# =============================================================================
+# Install this hook to catch quarantine violations before commit.
+#
+# INSTALLATION:
+#   cp tools/pre-commit-quarantine .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# CONSTITUTIONAL BASIS:
+#   Article 50: Martial Governance must be mechanically painful.
+# =============================================================================
+
+echo "🧯 Running quarantine check..."
+
+# Run the quarantine scanner
+python3 tools/quarantine_check.py --ci
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo "❌ COMMIT BLOCKED: Quarantine boundary violated"
+    echo "═══════════════════════════════════════════════════════════════════"
+    echo ""
+    echo "Your commit contains forbidden imports from src/ungoverned/"
+    echo "Run 'python3 tools/quarantine_check.py' for details."
+    echo ""
+    echo "RESOLUTION:"
+    echo "  1. Remove the forbidden imports"
+    echo "  2. If ungoverned code is needed, use Article 50 channels"
+    echo "  3. Never integrate UNGOVERNED code into GOVERNED modules"
+    echo ""
+    exit 1
+fi
+
+echo "✅ Quarantine check passed"
