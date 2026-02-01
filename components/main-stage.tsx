@@ -9,7 +9,6 @@ interface MainStageProps {
 export function MainStage({ activeNav }: MainStageProps) {
   return (
     <main className="flex-1 relative overflow-hidden">
-      {/* Background Grid Pattern */}
       <div
         className="absolute inset-0 opacity-[0.03]"
         style={{
@@ -21,7 +20,6 @@ export function MainStage({ activeNav }: MainStageProps) {
         }}
       />
 
-      {/* Content */}
       <div className="relative h-full flex items-center justify-center">
         {activeNav === "missions" && <RecessState />}
         {activeNav === "chronicle" && <ChronicleState />}
@@ -34,12 +32,10 @@ export function MainStage({ activeNav }: MainStageProps) {
 function RecessState() {
   return (
     <div className="flex flex-col items-center text-center">
-      {/* Glow Effect */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="h-96 w-96 rounded-full bg-green-500/10 animate-pulse-glow" />
+        <div className="h-96 w-96 rounded-full bg-green-500/10 animate-pulse" />
       </div>
 
-      {/* Icon with Glow Ring */}
       <div className="relative mb-8">
         <div className="absolute inset-0 scale-150 rounded-full bg-green-500/5 blur-2xl" />
         <div className="relative">
@@ -53,7 +49,6 @@ function RecessState() {
         </div>
       </div>
 
-      {/* Text */}
       <h1 className="text-3xl font-light text-foreground tracking-wide mb-3">
         The Senate is in Recess
       </h1>
@@ -61,7 +56,6 @@ function RecessState() {
         No active missions are currently in session. The governance council awaits new directives.
       </p>
 
-      {/* Status Indicator */}
       <div className="mt-8 flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5">
         <div className="h-2 w-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]" />
         <span className="text-xs text-muted-foreground uppercase tracking-wider">

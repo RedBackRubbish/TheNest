@@ -61,7 +61,6 @@ export function GovernanceTerminal() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const logIndexRef = useRef(0);
 
-  // Simulate live log updates
   useEffect(() => {
     const interval = setInterval(() => {
       const newLog = additionalLogs[logIndexRef.current % additionalLogs.length];
@@ -82,7 +81,6 @@ export function GovernanceTerminal() {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current && !collapsed) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -122,7 +120,6 @@ export function GovernanceTerminal() {
         collapsed ? "h-12" : "h-64"
       )}
     >
-      {/* Header */}
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="w-full flex items-center justify-between px-4 py-3 border-b border-white/10 hover:bg-white/5 transition-colors"
@@ -144,24 +141,13 @@ export function GovernanceTerminal() {
         )}
       </button>
 
-      {/* Terminal Content */}
       {!collapsed && (
         <div
           ref={scrollRef}
-          className="h-[calc(100%-48px)] overflow-y-auto terminal-scroll p-4 font-mono text-xs"
-          style={{ fontFamily: "var(--font-jetbrains), monospace" }}
+          className="h-[calc(100%-48px)] overflow-y-auto p-4 font-mono text-xs"
         >
-          {logs.map((log, index) => (
-            <div
-              key={log.id}
-              className={cn(
-                "flex gap-3 mb-1.5 opacity-0",
-                index === logs.length - 1 ? "animate-fade-in-up" : "opacity-100"
-              )}
-              style={{
-                animationDelay: index === logs.length - 1 ? "0ms" : undefined,
-              }}
-            >
+          {logs.map((log) => (
+            <div key={log.id} className="flex gap-3 mb-1.5">
               <span className="text-muted-foreground/60 shrink-0">
                 {log.timestamp}
               </span>
@@ -171,10 +157,9 @@ export function GovernanceTerminal() {
               <span className="text-foreground/80">{log.message}</span>
             </div>
           ))}
-          {/* Blinking Cursor */}
           <div className="flex items-center gap-1 mt-2 text-green-500">
             <span className="text-muted-foreground/60">{">"}</span>
-            <span className="animate-terminal-blink">_</span>
+            <span className="animate-pulse">_</span>
           </div>
         </div>
       )}

@@ -31,7 +31,6 @@ export function Sidebar({ activeNav, onNavChange }: SidebarProps) {
         collapsed ? "w-16" : "w-56"
       )}
     >
-      {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-6 border-b border-white/10">
         <div className="relative">
           <Hexagon className="h-8 w-8 text-green-500" strokeWidth={1.5} />
@@ -49,7 +48,6 @@ export function Sidebar({ activeNav, onNavChange }: SidebarProps) {
         )}
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 px-2 py-4 space-y-1">
         {navItems.map((item) => (
           <button
@@ -80,7 +78,6 @@ export function Sidebar({ activeNav, onNavChange }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Collapse Button */}
       <div className="px-2 py-4 border-t border-white/10">
         <button
           onClick={() => setCollapsed(!collapsed)}
@@ -96,7 +93,6 @@ export function Sidebar({ activeNav, onNavChange }: SidebarProps) {
         </button>
       </div>
 
-      {/* Ambient Glow */}
       <div className="absolute -bottom-20 -left-20 h-40 w-40 rounded-full bg-green-500/20 blur-3xl pointer-events-none" />
     </aside>
   );
