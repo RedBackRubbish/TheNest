@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
+
 import { cn } from "@/lib/utils"
 import { DragonAvatar } from "./dragon-avatar"
 import { DRAGONS, type MissionState, type DragonName } from "@/lib/types"

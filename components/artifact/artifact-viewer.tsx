@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Code, FileText, Shield, Copy, Check, ChevronDown } from "lucide-react"

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
+
 import { Activity, Book, Settings, Zap } from "lucide-react"
 
 interface HeaderProps {

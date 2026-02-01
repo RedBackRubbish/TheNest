@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 
+
 interface AmbientBackgroundProps {
   className?: string
   intensity?: "low" | "medium" | "high"

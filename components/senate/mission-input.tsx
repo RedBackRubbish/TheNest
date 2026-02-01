@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+
 import { motion, AnimatePresence } from "framer-motion"
 import { Send, Loader2, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"

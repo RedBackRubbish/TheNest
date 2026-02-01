@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+
 import { motion, AnimatePresence } from "framer-motion"
 import { Header } from "@/components/layout/header"
 import { AmbientBackground } from "@/components/ui/ambient-background"
