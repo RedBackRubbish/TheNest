@@ -11,7 +11,6 @@ export default function GovernanceDeck() {
 
   const handleViewChange = (view: string) => {
     setActiveView(view);
-    // Auto-activate session when navigating to missions
     if (view === "missions") {
       setIsSessionActive(true);
     }
