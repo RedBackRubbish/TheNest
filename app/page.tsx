@@ -2,11 +2,14 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Header } from "@/components/layout"
-import { AmbientBackground } from "@/components/ui"
-import { SenateChamber, MissionInput, VerdictDisplay, PhaseTimeline } from "@/components/senate"
-import { ArtifactViewer } from "@/components/artifact"
-import { ChronicleBrowser } from "@/components/chronicle"
+import { Header } from "@/components/layout/header"
+import { AmbientBackground } from "@/components/ui/ambient-background"
+import { SenateChamber } from "@/components/senate/senate-chamber"
+import { MissionInput } from "@/components/senate/mission-input"
+import { VerdictDisplay } from "@/components/senate/verdict-display"
+import { PhaseTimeline } from "@/components/senate/phase-timeline"
+import { ArtifactViewer } from "@/components/artifact/artifact-viewer"
+import { ChronicleBrowser } from "@/components/chronicle/chronicle-browser"
 import type { MissionState, DragonName, AgentVote } from "@/lib/types"
 
 // Simulated deliberation for demo (replace with real WebSocket)
