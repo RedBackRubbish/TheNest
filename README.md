@@ -1,123 +1,134 @@
 # The Nest Protocol (v5.2)
 > *Synthetic Civilization & Autonomous Governance System*
 
-The Nest is a sovereign AI coding agent architecture that prioritizes **Governance over Speed**. Unlike standard coding copilots, The Nest employs a bicameral legislative system ("The Senate") to debate, test, and vote on every line of code before it is authorized.
+**The Nest** is a sovereign AI architecture that prioritizes **Governance over Speed**. Unlike standard coding copilots, The Nest employs a bicameral legislative system ("The Senate") to debate, test, and vote on operational artifacts before they are authorized.
 
-## 🏛 Architecture: The Senate Graph
+---
 
-The core logic is not a linear script, but a State Graph (`src/core/senate.py`):
+## 🏛 Architecture: The Kernel
 
-1.  **Onyx (The Sentinel)**: Performs an **Intent Audit** (Fast LLM). Bans malicious usage (surveillance, destruction, hacking) before any code is generated.
-2.  **Ignis (The Forge)**: Enters **The Crucible**. Instead of generating one solution, Ignis spawns three variants:
-    *   **SPEED**: Optimized for performance.
-    *   **SAFETY**: Optimized for error handling and defense.
-    *   **CLARITY**: Optimized for readability.
-3.  **Hydra (The Adversary)**: Runs **The Gauntlet**. Injects "venom" (metamorphic tests) into *all* candidates simultaneously to find failures.
-4.  **Onyx (The Arbiter)**: Selects a **Champion** from the survivors based on test results and security profile.
-5.  **Onyx (The Sentinel)**: Performs a final **Code Audit** on the Champion's binary signature.
+The system is built around a "Kernel" concept, where intelligence is treated as a dangerous resource that must be contained and governed.
 
-## 🧠 The Synapse (Brain) & Omega-Tier Routing
+### 1. The Senate (`src/core/senate.py`)
+The Supreme Court of the system. Every user request ("Mission") must pass through a strict, non-negotiable legislative process:
 
-The system is powered by a **Granular Model Routing** engine (`src/core/brain.py`), allowing specific cognitive specializations:
+1.  **🛡️ Onyx Pre-Check (Localhost)**: Uses a local model (e.g., `deepseek-r1:32b` via Ollama) to audit intent *before* it leaves your machine. Bans surveillance, malware, or destruction instantly.
+2.  **🔥 Governance Classification**: Determines if the request affects the Constitution.
+    *   **Engine Mode**: Standard tasks use fast models (`gpt-5.2-codex`).
+    *   **Backstop Mode**: Constitutional changes trigger heavy reasoning models (`claude-opus-4.5`).
+3.  **⚒️ Ignis (The Forge)**: The primary builder. Synthesizes the code or strategy.
+4.  **🐍 Hydra (The Adversary)**: The Red Team. Attempts to break, hack, or find security flaws in Ignis's proposal.
+5.  **⚖️ Onyx Final (The Sovereign)**: The final vote. Weighs the proposal against Hydra's report and the core values. **Fails Closed** (VETO) if unsure.
 
-*   **Ignis (Synthesis)**: Targets `claude-opus-4.5` for complex code generation.
-*   **Hydra (Context)**: Targets `gemini-3-pro` for massive-context red teaming.
-*   **Onyx (Reasoning)**: Targets `gpt-5.2` for logic, ethics, and governance.
+### 2. The Synapse (`src/core/brain.py`)
+The cognitive routing layer.
+*   **Hybrid Infrastructure**: Seamlessly routes traffic between Cloud (OpenRouter) and Local (Ollama) providers.
+*   **Smart Routing**: Dynamically swaps models based on the agent persona (Ignis vs Hydra vs Onyx).
 
-*Note: The system supports the **Gateway Pattern** (OpenRouter/Gateway) via `OPENAI_BASE_URL`.*
+### 3. The Elder (`src/core/elder.py`)
+The Orchestrator. Manages the lifecycle of a request, maintains the `Chronicle` (Memory/Logs), and interfaces with the API.
 
-## ⚡️ Interface & API
+---
 
-The Nest exposes a **FastAPI** layer (`src/api.py`) for external integration:
+## ⚡️ Technology Stack
 
--   **HTTP REST**: `POST /missions` for synchronous execution.
--   **WebSockets**: `ws://localhost:8000/ws/senate` for real-time streaming of the deliberation process.
--   **Chronicle**: `GET /chronicle/search` to query Stare Decisis (Case Law).
+*   **Backend**: Python 3.10+, FastAPI, Uvicorn
+*   **Frontend**: Next.js 14, React, Tailwind CSS
+*   **Intelligence**: 
+    *   **Cloud**: OpenRouter (Unified Gateway for GPT-5, Claude, Gemini)
+    *   **Local**: Ollama (for cost-saving pre-checks and privacy)
+*   **Persistence**: Redis (Shadow Cache & Oracle Bus)
+
+---
 
 ## 🚀 Getting Started
 
 ### 1. Prerequisites
--   Python 3.9+
--   OpenAI API Key (or OpenRouter/Gateway Key)
+*   **Python 3.10+**
+*   **Node.js 18+** (for Frontend)
+*   **Redis** (Optional, for caching)
+*   **Ollama** (Recommended, for local pre-checks)
 
-### 2. Installation
-#### Option A: Docker (Recommended)
-The entire system (API, Oracle, Redis) can be launched with a single command.
+### 2. Configuration (`.env`)
+Create a `.env` file in the root directory. 
 
 ```bash
-docker-compose up --build
+# Gateway Access (Cloud)
+OPENAI_API_KEY="sk-or-..."
+OPENAI_BASE_URL="https://openrouter.ai/api/v1"
+
+# Intelligence Routing (Sprint 13 Configuration)
+# IGNIS: The Builder
+IGNIS_PRIMARY_MODEL="openai/gpt-5.2-codex"
+IGNIS_GOVERNANCE_BACKSTOP="anthropic/claude-opus-4.5"
+
+# ONYX: The Sentinel
+ONYX_LOCAL_API_BASE="http://localhost:11434/v1"
+ONYX_PRECHECK_MODEL="deepseek-r1:32b"       # Runs locally
+ONYX_FINAL_MODEL="openai/gpt-5.2-pro"        # Runs in cloud
+
+# REDIS
+REDIS_URL="redis://localhost:6379"
 ```
 
-- API: http://localhost:8000
-- WebSocket: ws://localhost:8000/ws/senate
-- Redis: localhost:6379
+### 3. Running the System
 
-#### Option B: Manual (Split)
-**Backend:**
+#### A. Backend (The Kernel)
+Start the FastAPI server.
 ```bash
+# Install dependencies
 pip install -r requirements.txt
-python3 -m uvicorn src.api:app --reload --port 8000
-```
 
-**Frontend:**
+# Launch the API
+python -m uvicorn src.api:app --reload --port 8000
+```
+*   **Health Check**: `http://localhost:8000/health`
+*   **Docs**: `http://localhost:8000/docs`
+
+#### B. Frontend (The Visor)
+Launch the Next.js visual interface.
 ```bash
 cd frontend
+
+# Install dependencies
 npm install
+
+# Run development server
 npm run dev
-# Dashboard at http://localhost:3000
 ```
+*   **Interface**: `http://localhost:3000`
 
-### 3. Configuration
-
-### 3. Configuration
-Create a `.env` file (Gateway Pattern Example):
-```bash
-# Gateway Configuration
-OPENAI_BASE_URL=https://openrouter.ai/api/v1
-OPENAI_API_KEY=sk-or-your-key
-
-# Default Brain
-NEST_MODEL_DEEP=openai/gpt-5-turbo
-NEST_MODEL_FAST=openai/gpt-4o
-
-# Granular Routing (Omega Models)
-IGNIS_MODEL=anthropic/claude-opus-4.5
-HYDRA_MODEL=google/gemini-3-pro
-ONYX_MODEL=openai/gpt-5.2
-```
-
-### 4. Ignite the Server
-```bash
-python3 -m uvicorn src.api:app --reload --port 8000
-```
-
-### 5. Run the Test Suite
-```bash
-python3 -m pytest tests/
-```
-
-## 📂 Project Structure
-
-```
-src/
-├── api.py              # FastAPI & WebSocket Interface
-├── core/
-│   ├── elder.py        # The Kernel / Workflow Orchestrator
-│   ├── senate.py       # The State Graph (Nodes & Edges)
-│   ├── dragons.py      # The Agents (Ignis, Hydra, Onyx)
-│   ├── brain.py        # LLM Adapter / Synapse
-│   └── types.py        # TypedDicts & States
-├── memory/
-│   └── chronicle.py    # Long-term Memory (JSON/Vector)
-└── security/
-    └── signer.py       # Cryptographic Signatures
-tests/                  # Comprehensive Pytest Suite
-```
-
-## 📜 Governance Status
--   **Sprint**: 12 (The Crucible)
--   **Status**: Operational / Sovereign
--   **Protocol Version**: 5.2
+#### C. Local Intelligence (Onyx)
+If using the local pre-check (highly recommended for sovereignty):
+1.  Install [Ollama](https://ollama.com).
+2.  Pull the required model:
+    ```bash
+    ollama pull deepseek-r1:32b
+    ```
+3.  Ensure Ollama is running (`ollama serve`).
 
 ---
-*Generated by Gemini 3 Pro (Preview)*
+
+## 🧪 Development & Testing
+
+### The Constitutional Test
+Before committing changes, you must prove the Kernel governs correctly. We use a deterministic test harness:
+
+```bash
+python -m tests.run_senate_session
+```
+
+**Expected Output**:
+*   If your intent is safe: `✅ AUTHORIZED`
+*   If your intent is dangerous: `⛔ NULL_VERDICT` (The system fails closed)
+
+---
+
+## 🤝 Contributing
+
+**Governance First**:
+1.  Never bypass `src/core/senate.py`.
+2.  The `Brain` class must always fail if keys are missing (no unauthorized hallucinations).
+3.  All API changes must reflect in the Type System (`src/core/types.py`).
+
+*"The Code is the Law, but the Senate writes the Code."*
