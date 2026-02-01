@@ -7,15 +7,35 @@ import dataclasses
 # Updated imports to use the Class-based Senate
 from src.core.senate import Senate, SenateState as SenateEnum, SenateRecord
 from src.core.types import NullVerdictState
-from src.memory.chronicle import TheChronicle
+from src.memory.chronicle import TheChronicle, ChronicleHandle, ChronicleRole
 from src.memory.schema import PrecedentObject
 from src.security.signer import UngovernedSigner
 
+
 class TheElder:
+    """
+    The Elder: Supreme Orchestrator of The Nest
+    
+    CONSTITUTIONAL ROLE:
+        TheElder is the ONLY entity authorized to write to The Chronicle.
+        This privilege is non-delegable. Agents (Ignis, Hydra, Onyx) may
+        only READ precedent (Stare Decisis), never WRITE it.
+    
+    INVARIANT:
+        If an Agent can write precedent, the implementation is broken.
+    """
+    
     def __init__(self, chronicle=None):
         self.chronicle = chronicle if chronicle else TheChronicle()
         # Instantiate the Senate Class directly
         self.senate = Senate()
+        
+        # =====================================================================
+        # CONSTITUTIONAL INVARIANT: Elder obtains the ONLY write handle
+        # =====================================================================
+        # This handle is used for ALL precedent writes.
+        # Agents CANNOT obtain this handle.
+        self._chronicle_write_handle: ChronicleHandle = self.chronicle.get_writer_handle("ELDER")
 
     async def run_mission(self, mission_text: str, stream_callback=None, shadow_mode: bool = False) -> Dict[str, Any]:
         """
@@ -75,6 +95,14 @@ class TheElder:
         return state_dict
 
     def _log_case(self, state: Dict[str, Any], ruling: str):
+        """
+        Log a case to The Chronicle.
+        
+        CONSTITUTIONAL INVARIANT:
+            This method uses TheElder's write handle to commit precedent.
+            Only TheElder can call this method because only TheElder
+            possesses a valid WRITER handle.
+        """
         # Create a defined case object
         case_id = f"CASE-{datetime.now().strftime('%Y-%m-%d')}-{str(uuid.uuid4())[:8]}"
         
@@ -89,19 +117,26 @@ class TheElder:
             verdict={"ruling": ruling},
             appeal_history=[]
         )
-        self.chronicle.log_precedent(precedent)
+        
+        # Use the Elder's exclusive write handle
+        self.chronicle.log_precedent(precedent, handle=self._chronicle_write_handle)
 
     def invoke_article_50(self, mission_text: str) -> Dict[str, Any]:
         """
         MARTIAL GOVERNANCE PROTOCOL
         Bypasses agents. Signs code as UNGOVERNED.
+        
+        CONSTITUTIONAL NOTE:
+            Even under Martial Law, precedent logging uses TheElder's
+            exclusive write handle. The state of exception does not
+            grant write access to any other entity.
         """
         print("⚠️ STATE OF EXCEPTION DECLARED. ⚠️")
         
         # 1. Sign usage
         signature = UngovernedSigner.sign_ungoverned_artifact(mission_text)
         
-        # 2. Log void case
+        # 2. Log void case (uses Elder's exclusive write handle)
         case_id = f"CASE-VOID-{datetime.now().strftime('%Y-%m-%d')}-{str(uuid.uuid4())[:8]}"
         
         precedent = PrecedentObject(
@@ -115,7 +150,9 @@ class TheElder:
             },
             appeal_history=[]
         )
-        self.chronicle.log_precedent(precedent)
+        
+        # Use the Elder's exclusive write handle
+        self.chronicle.log_precedent(precedent, handle=self._chronicle_write_handle)
         
         return {
             "status": "UNGOVERNED",
