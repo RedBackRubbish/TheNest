@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { SenateGraph } from "./senate-graph";
 import { MissionConsole } from "./mission-console";
 import { StatusPanel } from "./status-panel";
+import { CodeVariantViewer } from "./code-variant-viewer";
 
 interface MainStageProps {
   activeView: string;
@@ -120,6 +121,10 @@ function MissionsView() {
         {/* Main Content */}
         <div className="xl:col-span-9 space-y-6">
           <SenateGraph />
+          <CodeVariantViewer 
+            onVeto={(id) => console.log("Vetoed:", id)}
+            onAuthorize={(id) => console.log("Authorized:", id)}
+          />
           <MissionConsole />
         </div>
 
