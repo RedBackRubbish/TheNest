@@ -29,12 +29,6 @@ senate: Optional[Senate] = None
 redis_client: Optional[redis.Redis] = None
 start_time = time.time()
 
-# Singleton State
-elder: Optional[TheElder] = None
-senate: Optional[Senate] = None
-redis_client: Optional[redis.Redis] = None
-start_time = time.time()
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -502,6 +496,9 @@ async def websocket_senate(websocket: WebSocket):
             })
 
             # --- STEP C: HYDRA GAUNTLET ---
+            hydra_report = None
+            hydra_findings = []
+            
             if len(proposal) > 100:
                 await websocket.send_json({
                     "type": "state_change",
@@ -523,12 +520,24 @@ async def websocket_senate(websocket: WebSocket):
                 )
                 hydra_report = json.dumps(hydra_resp, indent=2) if isinstance(hydra_resp, dict) else str(hydra_resp)
                 
+                # EXTRACT BINDING FINDINGS (Constitutional Enforcement)
+                hydra_findings = senate._extract_hydra_findings(hydra_report)
+                
+                if hydra_findings:
+                    await websocket.send_json({
+                        "type": "log",
+                        "timestamp": datetime.now().isoformat(),
+                        "agent": "HYDRA",
+                        "status": "CRITICAL",
+                        "message": f"⚠️ {len(hydra_findings)} BINDING FINDING(S) - Onyx must acknowledge"
+                    })
+                
                 await websocket.send_json({
                     "type": "log",
                     "timestamp": datetime.now().isoformat(),
                     "agent": "HYDRA",
                     "status": "COMPLETE",
-                    "message": "Adversarial analysis complete"
+                    "message": f"Adversarial analysis complete. Findings: {len(hydra_findings)}"
                 })
                 await websocket.send_json({
                     "type": "state_change",
@@ -559,8 +568,30 @@ async def websocket_senate(websocket: WebSocket):
                 "message": "Final judgment in progress (Cloud)..."
             })
 
-            final_context = f"PROPOSAL:\n{proposal}\n\nHYDRA REPORT:\n{hydra_report}"
+            # Build context with explicit Hydra findings for Onyx to acknowledge
+            hydra_context = hydra_report or "No critical findings."
+            if hydra_findings:
+                hydra_context += "\n\n⚠️ BINDING FINDINGS REQUIRING ACKNOWLEDGMENT:\n"
+                for i, f in enumerate(hydra_findings, 1):
+                    hydra_context += f"  {i}. [{f.severity}] {f.pattern_matched}\n"
+            
+            final_context = f"PROPOSAL:\n{proposal}\n\nHYDRA REPORT:\n{hydra_context}"
             final_vote = await senate._onyx_final(mission, final_context)
+            
+            # --- HYDRA BINDING ENFORCEMENT (Python Logic, Not Prompts) ---
+            final_vote, was_overridden = senate._enforce_hydra_binding(
+                final_vote,
+                hydra_findings
+            )
+            
+            if was_overridden:
+                await websocket.send_json({
+                    "type": "log",
+                    "timestamp": datetime.now().isoformat(),
+                    "agent": "SYSTEM",
+                    "status": "OVERRIDE",
+                    "message": f"🚨 HYDRA BINDING TRIGGERED: Onyx ignored {len(hydra_findings)} finding(s)"
+                })
 
             await websocket.send_json({
                 "type": "log",
@@ -577,21 +608,25 @@ async def websocket_senate(websocket: WebSocket):
 
             # --- FINAL PAYLOAD ---
             if final_vote.verdict == "AUTHORIZE":
+                risk_note = " (with acknowledged risk)" if final_vote.hydra_findings_cited else ""
                 await websocket.send_json({
                     "type": "artifact",
                     "code": proposal,
-                    "verdict": "AUTHORIZED"
+                    "verdict": f"AUTHORIZED{risk_note}"
                 })
                 await websocket.send_json({
                     "type": "final_verdict",
                     "result": "AUTHORIZED",
+                    "risk_acknowledged": final_vote.hydra_findings_cited,
                     "appealable": False
                 })
             else:
                 await websocket.send_json({
                     "type": "final_verdict",
-                    "result": "VETOED",
+                    "result": "VETOED" if not was_overridden else "HYDRA_OVERRIDE",
                     "reason": final_vote.reasoning,
+                    "hydra_override": was_overridden,
+                    "unacknowledged_findings": len(hydra_findings) if was_overridden else 0,
                     "appealable": True
                 })
             

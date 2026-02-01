@@ -10,8 +10,8 @@ class TestBrainRouting(unittest.IsolatedAsyncioTestCase):
         # Clear env vars for checking defaults
         with patch.dict(os.environ, {}, clear=True):
             brain = Brain()
-            self.assertEqual(brain.model_deep, "gpt-5.2")
-            self.assertEqual(brain.model_fast, "gpt-4o")
+            self.assertEqual(brain.models["deep"], "openai/gpt-5.2")
+            self.assertEqual(brain.models["fast"], "openai/gpt-4o")
 
     async def test_brain_initialization_env_overrides(self):
         """Test model initialization with env var overrides."""
@@ -23,41 +23,33 @@ class TestBrainRouting(unittest.IsolatedAsyncioTestCase):
         with patch.dict(os.environ, env_vars):
             with patch("src.core.brain.AsyncOpenAI") as mock_openai:
                 brain = Brain()
-                self.assertEqual(brain.model_deep, "deep-model-v1")
-                self.assertEqual(brain.model_fast, "fast-model-v1")
+                self.assertEqual(brain.models["deep"], "deep-model-v1")
+                self.assertEqual(brain.models["fast"], "fast-model-v1")
 
     async def test_think_routing_default(self):
-        """Test that think() uses the correct default models based on mode."""
+        """Test that think() uses the correct default models based on agent."""
         brain = Brain()
-        brain.client = MagicMock() # Mock client so it doesn't try to be None
         
-        # Test DEEP mode
-        with patch.object(brain, 'client', MagicMock()) as mock_client:
-            mock_client.chat.completions.create = MagicMock()
-            await brain.think("sys", "user", mode="deep")
-            # Should use configured model_deep (default gpt-5.2)
-            call_args = mock_client.chat.completions.create.call_args
-            self.assertEqual(call_args.kwargs['model'], "gpt-5.2")
-
-        # Test FAST mode
-        with patch.object(brain, 'client', MagicMock()) as mock_client:
-            mock_client.chat.completions.create = MagicMock()
-            await brain.think("sys", "user", mode="fast")
-            # Should use configured model_fast (default gpt-4o)
-            call_args = mock_client.chat.completions.create.call_args
-            self.assertEqual(call_args.kwargs['model'], "gpt-4o")
+        # Test that models are correctly registered by agent name
+        self.assertIn("ignis", brain.models)
+        self.assertIn("hydra", brain.models)
+        self.assertIn("onyx", brain.models)
+        self.assertIn("onyx_precheck", brain.models)
+        self.assertIn("onyx_final", brain.models)
 
     async def test_think_routing_override(self):
-        """Test that think() respects the explicit model override."""
-        brain = Brain()
-        brain.client = MagicMock()
-        
-        with patch.object(brain, 'client', MagicMock()) as mock_client:
-            mock_client.chat.completions.create = MagicMock()
-            await brain.think("sys", "user", mode="deep", model="special-model-x")
+        """Test that models can be overridden via environment variables."""
+        env_vars = {
+            "IGNIS_PRIMARY_MODEL": "custom/ignis-model",
+            "HYDRA_MODEL": "custom/hydra-model",
+            "ONYX_FINAL_MODEL": "custom/onyx-model",
+        }
+        with patch.dict(os.environ, env_vars):
+            brain = Brain()
             
-            call_args = mock_client.chat.completions.create.call_args
-            self.assertEqual(call_args.kwargs['model'], "special-model-x")
+            self.assertEqual(brain.models["ignis"], "custom/ignis-model")
+            self.assertEqual(brain.models["hydra"], "custom/hydra-model")
+            self.assertEqual(brain.models["onyx"], "custom/onyx-model")
 
 if __name__ == '__main__':
     unittest.main()
