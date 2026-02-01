@@ -5,7 +5,6 @@ import { Sidebar } from "@/components/sidebar";
 import { MainStage } from "@/components/main-stage";
 import { GovernanceLog } from "@/components/governance-log";
 
-// The Nest Governance Deck - Sovereign Dark Theme
 export default function GovernanceDeck() {
   const [activeView, setActiveView] = useState("missions");
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -19,12 +18,9 @@ export default function GovernanceDeck() {
 
   return (
     <div className="flex h-screen bg-zinc-950 overflow-hidden">
-      {/* Sidebar Navigation */}
       <Sidebar activeView={activeView} onViewChange={handleViewChange} />
 
-      {/* Main Content Area */}
       <div className="flex flex-1 flex-col min-w-0">
-        {/* Top Header Bar */}
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/[0.08] bg-zinc-950/80 backdrop-blur-xl px-6">
           <div className="flex items-center gap-4">
             <h2 className="font-sans text-sm font-medium text-foreground capitalize">
@@ -37,7 +33,6 @@ export default function GovernanceDeck() {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Session Toggle */}
             <button
               onClick={() => setIsSessionActive(!isSessionActive)}
               className={`flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-xs transition-all ${
@@ -54,7 +49,6 @@ export default function GovernanceDeck() {
               {isSessionActive ? "SESSION ACTIVE" : "SESSION PAUSED"}
             </button>
 
-            {/* Dragon Status */}
             <div className="hidden sm:flex items-center gap-2">
               <DragonIndicator name="O" color="onyx" />
               <DragonIndicator name="I" color="ignis" />
@@ -63,14 +57,12 @@ export default function GovernanceDeck() {
           </div>
         </header>
 
-        {/* Main Stage */}
         <MainStage
           activeView={activeView}
           isSessionActive={isSessionActive}
           className="flex-1"
         />
 
-        {/* Governance Log Terminal */}
         <GovernanceLog />
       </div>
     </div>
