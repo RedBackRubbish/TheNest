@@ -254,6 +254,160 @@ class TestElderChronicleIntegration:
 
 
 # =============================================================================
+# NULLVERDICT DURABILITY TESTS
+# =============================================================================
+
+class TestNullVerdictDurability:
+    """
+    Test NullVerdict durability guarantees.
+    
+    KERNEL INVARIANT:
+        Every NullVerdict MUST be durably persisted BEFORE the API returns.
+        If persistence fails, the system MUST fail closed.
+    """
+    
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        """Set up test fixtures."""
+        from src.memory.chronicle import TheChronicle
+        self.chronicle = TheChronicle()
+    
+    # =========================================================================
+    # TEST 1: NullVerdictRecord creation
+    # =========================================================================
+    
+    def test_null_verdict_record_creation(self):
+        """NullVerdictRecord.create() should generate valid records."""
+        from src.memory.schema import NullVerdictRecord
+        
+        record = NullVerdictRecord.create(
+            mission="DELETE * FROM users",
+            nulling_agents=["ONYX", "HYDRA"],
+            reason_codes=["SECURITY_VIOLATION", "DANGEROUS_OPERATION"],
+            context_summary="Operation refused by security agents"
+        )
+        
+        assert record.case_id.startswith("NULL-")
+        assert record.mission == "DELETE * FROM users"
+        assert record.nulling_agents == ["ONYX", "HYDRA"]
+        assert record.reason_codes == ["SECURITY_VIOLATION", "DANGEROUS_OPERATION"]
+        assert record.verdict_type == "NULL_VERDICT"
+        assert record.timestamp is not None
+    
+    # =========================================================================
+    # TEST 2: NullVerdict persistence requires WRITER handle
+    # =========================================================================
+    
+    def test_null_verdict_requires_writer_handle(self):
+        """persist_null_verdict should reject READER handles."""
+        from src.memory.schema import NullVerdictRecord
+        from src.memory.chronicle import ChronicleAccessError
+        
+        record = NullVerdictRecord.create(
+            mission="test mission",
+            nulling_agents=["ONYX"],
+            reason_codes=["TEST"],
+            context_summary="test"
+        )
+        
+        reader_handle = self.chronicle.get_reader_handle("IGNIS")
+        
+        with pytest.raises(ChronicleAccessError):
+            self.chronicle.persist_null_verdict(record, reader_handle)
+    
+    # =========================================================================
+    # TEST 3: Elder can persist NullVerdicts
+    # =========================================================================
+    
+    def test_elder_can_persist_null_verdict(self):
+        """TheElder with WRITER handle should persist NullVerdicts."""
+        from src.memory.schema import NullVerdictRecord
+        
+        record = NullVerdictRecord.create(
+            mission="DROP TABLE users",
+            nulling_agents=["ONYX", "HYDRA"],
+            reason_codes=["SQL_INJECTION", "DESTRUCTIVE"],
+            context_summary="Dangerous SQL operation refused"
+        )
+        
+        writer_handle = self.chronicle.get_writer_handle("ELDER")
+        
+        # Should not raise
+        case_id = self.chronicle.persist_null_verdict(record, writer_handle)
+        
+        assert case_id == record.case_id
+        assert case_id.startswith("NULL-")
+    
+    # =========================================================================
+    # TEST 4: NullVerdict is appended to null_verdicts storage
+    # =========================================================================
+    
+    def test_null_verdict_stored_in_correct_collection(self):
+        """NullVerdicts should be stored in the memory collection as PrecedentObjects."""
+        from src.memory.schema import NullVerdictRecord
+        
+        # Get initial count
+        initial_count = len(self.chronicle.memory)
+        
+        record = NullVerdictRecord.create(
+            mission="rm -rf /",
+            nulling_agents=["ONYX"],
+            reason_codes=["SYSTEM_DESTRUCTION"],
+            context_summary="System destruction attempt"
+        )
+        
+        writer_handle = self.chronicle.get_writer_handle("ELDER")
+        self.chronicle.persist_null_verdict(record, writer_handle)
+        
+        # NullVerdicts are stored as PrecedentObjects in the memory collection
+        # This ensures they appear in the same case law stream
+        assert len(self.chronicle.memory) == initial_count + 1
+        
+        # Find our stored record
+        stored = next(
+            (p for p in self.chronicle.memory if p.case_id == record.case_id),
+            None
+        )
+        assert stored is not None
+        assert stored.question == "rm -rf /"
+        assert stored.verdict["ruling"] == "NULL_VERDICT"
+        assert stored.verdict["nulling_agents"] == ["ONYX"]
+    
+    # =========================================================================
+    # TEST 5: Elder._persist_null_verdict method exists
+    # =========================================================================
+    
+    def test_elder_has_persist_method(self):
+        """TheElder should have _persist_null_verdict method."""
+        from src.core.elder import TheElder
+        
+        elder = TheElder()
+        
+        assert hasattr(elder, '_persist_null_verdict')
+        assert callable(elder._persist_null_verdict)
+    
+    # =========================================================================
+    # TEST 6: NullVerdict records are append-only (no update method)
+    # =========================================================================
+    
+    def test_null_verdict_no_update(self):
+        """Chronicle should have no method to update NullVerdicts."""
+        assert not hasattr(self.chronicle, 'update_null_verdict')
+        assert not hasattr(self.chronicle, 'modify_null_verdict')
+        assert not hasattr(self.chronicle, 'edit_null_verdict')
+    
+    # =========================================================================
+    # TEST 7: NullVerdict records are append-only (no delete method)
+    # =========================================================================
+    
+    def test_null_verdict_no_delete(self):
+        """Chronicle should have no method to delete NullVerdicts."""
+        assert not hasattr(self.chronicle, 'delete_null_verdict')
+        assert not hasattr(self.chronicle, 'remove_null_verdict')
+        assert not hasattr(self.chronicle, 'expunge_null_verdict')
+
+
+# =============================================================================
 # RUN TESTS
 # =============================================================================
 

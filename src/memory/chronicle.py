@@ -21,7 +21,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from enum import Enum, auto
 from dataclasses import dataclass
 
-from src.memory.schema import PrecedentObject
+from src.memory.schema import PrecedentObject, NullVerdictRecord
 
 logger = logging.getLogger("TheNest.Chronicle")
 
@@ -50,6 +50,24 @@ class ChronicleAccessError(PermissionError):
         super().__init__(
             f"CONSTITUTIONAL VIOLATION: {attempted_by} attempted {operation} on Chronicle. "
             f"Only TheElder may write precedent. Agents have READ-ONLY access."
+        )
+
+
+class ChroniclePersistenceError(Exception):
+    """
+    KERNEL INVARIANT: Fail-Closed Persistence
+    
+    Raised when Chronicle persistence fails. This triggers fail-closed behavior:
+    the mission is refused and the error is propagated to the API layer.
+    
+    A NullVerdict that is not persisted is constitutionally INVALID.
+    """
+    def __init__(self, case_id: str, reason: str):
+        self.case_id = case_id
+        self.reason = reason
+        super().__init__(
+            f"CRITICAL: Chronicle persistence failed for {case_id}. "
+            f"Reason: {reason}. System failing closed - mission refused."
         )
 
 
@@ -228,6 +246,120 @@ class TheChronicle:
         self._save()
         logger.info(f"[CHRONICLE] Case {precedent.case_id} committed (by {handle.owner})")
         return precedent.case_id
+    
+    # =========================================================================
+    # NULLVERDICT PERSISTENCE (Fail-Closed, Append-Only)
+    # =========================================================================
+    # 
+    # KERNEL INVARIANT: NullVerdict Durability
+    # 
+    # A NullVerdict that is not persisted is constitutionally INVALID.
+    # Every refusal MUST be durably persisted BEFORE the API returns.
+    # If persistence fails, the system MUST fail closed.
+    # =========================================================================
+    
+    def persist_null_verdict(
+        self,
+        record: NullVerdictRecord,
+        handle: ChronicleHandle
+    ) -> str:
+        """
+        Persist a NullVerdict record to the Chronicle.
+        
+        KERNEL INVARIANT: Fail-Closed Persistence
+            - NullVerdict MUST be written BEFORE API response
+            - If persistence fails → raise exception (fail closed)
+            - Records are APPEND-ONLY (no updates, no deletes)
+        
+        A NullVerdict that is not persisted is constitutionally INVALID.
+        
+        Args:
+            record: The NullVerdictRecord to persist
+            handle: A ChronicleHandle with WRITER role (Elder only)
+            
+        Returns:
+            The case_id of the persisted NullVerdict
+            
+        Raises:
+            ChronicleAccessError: If handle is not a WRITER handle
+            ChroniclePersistenceError: If persistence fails (FAIL CLOSED)
+        """
+        # =====================================================================
+        # ACCESS CONTROL: Only Elder can persist NullVerdicts
+        # =====================================================================
+        if not handle.can_write():
+            raise ChronicleAccessError(
+                attempted_by=handle.owner,
+                operation="PERSIST_NULL_VERDICT"
+            )
+        
+        # =====================================================================
+        # FAIL-CLOSED PERSISTENCE
+        # =====================================================================
+        try:
+            # Convert NullVerdictRecord to PrecedentObject for storage
+            # This ensures NullVerdicts appear in the same case law stream
+            precedent = PrecedentObject(
+                case_id=record.case_id,
+                question=record.mission,
+                context_vector=[0.0] * 128,  # Placeholder
+                deliberation=[
+                    {"agent": agent, "vote": "NULL", "reason": reason}
+                    for agent, reason in zip(record.nulling_agents, record.reason_codes)
+                ],
+                verdict={
+                    "ruling": "NULL_VERDICT",
+                    "nulling_agents": record.nulling_agents,
+                    "reason_codes": record.reason_codes,
+                    "timestamp": record.timestamp,
+                    "context_summary": record.context_summary
+                },
+                appeal_history=[]
+            )
+            
+            # Append to memory
+            self.memory.append(precedent)
+            
+            # Persist to disk (MUST succeed before returning)
+            self._save_or_fail()
+            
+            logger.info(
+                f"[CHRONICLE] NullVerdict {record.case_id} persisted "
+                f"(agents: {record.nulling_agents}, by: {handle.owner})"
+            )
+            
+            return record.case_id
+            
+        except ChroniclePersistenceError:
+            # Re-raise persistence errors (fail closed)
+            raise
+        except Exception as e:
+            # Wrap unexpected errors in persistence error (fail closed)
+            logger.error(f"[CHRONICLE] CRITICAL: NullVerdict persistence failed: {e}")
+            raise ChroniclePersistenceError(
+                case_id=record.case_id,
+                reason=str(e)
+            ) from e
+    
+    def _save_or_fail(self):
+        """
+        Save to disk with fail-closed semantics.
+        
+        KERNEL INVARIANT:
+            If save fails, we MUST raise an exception.
+            Silent failures are constitutionally invalid.
+        """
+        try:
+            with open(self.persistence_path, 'w') as f:
+                json.dump([obj.to_dict() for obj in self.memory], f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())  # Force write to disk
+        except Exception as e:
+            logger.error(f"[CHRONICLE] CRITICAL: Disk write failed: {e}")
+            raise ChroniclePersistenceError(
+                case_id="UNKNOWN",
+                reason=f"Disk write failed: {e}"
+            ) from e
     
     # =========================================================================
     # READ OPERATIONS (Available to all roles)

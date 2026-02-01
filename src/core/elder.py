@@ -7,8 +7,13 @@ import dataclasses
 # Updated imports to use the Class-based Senate
 from src.core.senate import Senate, SenateState as SenateEnum, SenateRecord
 from src.core.types import NullVerdictState
-from src.memory.chronicle import TheChronicle, ChronicleHandle, ChronicleRole
-from src.memory.schema import PrecedentObject
+from src.memory.chronicle import (
+    TheChronicle, 
+    ChronicleHandle, 
+    ChronicleRole,
+    ChroniclePersistenceError
+)
+from src.memory.schema import PrecedentObject, NullVerdictRecord
 from src.security.signer import UngovernedSigner
 
 
@@ -41,6 +46,13 @@ class TheElder:
         """
         Orchestrates the mission via the Senate.
         Adapts the new SenateRecord to the legacy API Contract.
+        
+        KERNEL INVARIANT: NullVerdict Durability
+            If the mission is refused (NullVerdict), the refusal MUST be
+            durably persisted to the Chronicle BEFORE this method returns.
+            If persistence fails, the system fails closed (exception raised).
+            
+            A NullVerdict that is not persisted is constitutionally INVALID.
         """
         if stream_callback: await stream_callback("SENATE_CONVENING", {"mission": mission_text})
 
@@ -84,15 +96,84 @@ class TheElder:
             "test_results": {"status": "PASSED"} if verdict == "APPROVED" else {"status": "FAILED"}
         }
 
-        # 5. Callbacks & Logging
+        # =====================================================================
+        # KERNEL INVARIANT: Persist verdict BEFORE returning to API
+        # =====================================================================
+        # Both APPROVED and NULL_VERDICT cases must be logged.
+        # For NullVerdicts, persistence MUST succeed or we fail closed.
+        # =====================================================================
+        
         if verdict == "APPROVED":
             if stream_callback: await stream_callback("MISSION_APPROVED", state_dict)
             if not shadow_mode:
                 self._log_case(state_dict, "APPROVED")
         else:
+            # =====================================================================
+            # NULLVERDICT DURABILITY: Persist BEFORE API response
+            # =====================================================================
+            # A NullVerdict that is not persisted is constitutionally INVALID.
+            # If persistence fails, we fail closed (exception propagates to API).
+            # =====================================================================
+            if not shadow_mode:
+                self._persist_null_verdict(
+                    mission=record.intent,
+                    nulling_agents=verdict.nulling_agents,
+                    reason_codes=verdict.reason_codes,
+                    context_summary=verdict.context_summary
+                )
+            
             if stream_callback: await stream_callback("MISSION_REFUSED", state_dict)
             
         return state_dict
+
+    def _persist_null_verdict(
+        self,
+        mission: str,
+        nulling_agents: List[str],
+        reason_codes: List[str],
+        context_summary: str
+    ) -> None:
+        """
+        Persist a NullVerdict to The Chronicle with fail-closed semantics.
+        
+        KERNEL INVARIANT: NullVerdict Durability
+            This method MUST complete successfully before the API can
+            return a refusal response. If persistence fails, an exception
+            is raised and the API call fails.
+            
+            A NullVerdict that is not persisted is constitutionally INVALID.
+            
+        FAIL-CLOSED BEHAVIOR:
+            If persistence fails for any reason (disk full, permissions,
+            corruption, etc.), the system fails closed by raising
+            ChroniclePersistenceError. This ensures:
+            1. No silent failures in the governance audit trail
+            2. The caller (API) sees an error, not a successful refusal
+            3. Operations can investigate and retry if appropriate
+            
+        Args:
+            mission: The refused mission text
+            nulling_agents: List of agents that voted against
+            reason_codes: List of reason strings from nulling agents
+            context_summary: Combined summary of refusal reasons
+            
+        Raises:
+            ChroniclePersistenceError: If persistence fails (fail-closed)
+        """
+        # Create the NullVerdict record
+        record = NullVerdictRecord.create(
+            mission=mission,
+            nulling_agents=nulling_agents,
+            reason_codes=reason_codes,
+            context_summary=context_summary
+        )
+        
+        # Persist using the Elder's exclusive write handle
+        # This call will raise ChroniclePersistenceError on failure
+        self.chronicle.persist_null_verdict(
+            record=record,
+            handle=self._chronicle_write_handle
+        )
 
     def _log_case(self, state: Dict[str, Any], ruling: str):
         """
