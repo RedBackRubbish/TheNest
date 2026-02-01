@@ -1,17 +1,21 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "motion/react";
-import React, { useRef, useState, useEffect } from "react";
+import { motion } from "motion/react";
+import React, { useState, useEffect } from "react";
+
+interface PathData {
+  path: string;
+  duration: number;
+}
 
 export const BackgroundBeams = React.memo(
   ({ className }: { className?: string }) => {
-    const svgRef = useRef<SVGSVGElement>(null);
-    const [paths, setPaths] = useState<string[]>([]);
+    const [paths, setPaths] = useState<PathData[]>([]);
 
     useEffect(() => {
       const generatePaths = () => {
-        const newPaths = [];
+        const newPaths: PathData[] = [];
         for (let i = 0; i < 12; i++) {
           const startX = Math.random() * 100;
           const endX = Math.random() * 100;
@@ -19,14 +23,19 @@ export const BackgroundBeams = React.memo(
           const controlY1 = 20 + Math.random() * 30;
           const controlX2 = Math.random() * 100;
           const controlY2 = 50 + Math.random() * 30;
-          newPaths.push(
-            `M${startX} 0 C${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} 100`
-          );
+          newPaths.push({
+            path: `M${startX} 0 C${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} 100`,
+            duration: 4 + Math.random() * 4,
+          });
         }
         setPaths(newPaths);
       };
       generatePaths();
     }, []);
+
+    if (paths.length === 0) {
+      return <div className={cn("absolute inset-0 overflow-hidden", className)} />;
+    }
 
     return (
       <div
@@ -36,7 +45,6 @@ export const BackgroundBeams = React.memo(
         )}
       >
         <svg
-          ref={svgRef}
           className="absolute inset-0 w-full h-full"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
@@ -60,10 +68,10 @@ export const BackgroundBeams = React.memo(
               <stop offset="100%" stopColor="var(--color-hydra)" stopOpacity="0" />
             </linearGradient>
           </defs>
-          {paths.map((path, index) => (
+          {paths.map((pathData, index) => (
             <motion.path
               key={index}
-              d={path}
+              d={pathData.path}
               stroke={`url(#beamGradient${(index % 3) + 1})`}
               strokeWidth="0.15"
               strokeLinecap="round"
@@ -73,7 +81,7 @@ export const BackgroundBeams = React.memo(
                 opacity: [0, 0.5, 0.5, 0],
               }}
               transition={{
-                duration: 4 + Math.random() * 4,
+                duration: pathData.duration,
                 repeat: Infinity,
                 delay: index * 0.5,
                 ease: "easeInOut",

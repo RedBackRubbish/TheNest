@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 interface SparklesProps {
   id?: string;
@@ -15,6 +15,15 @@ interface SparklesProps {
   particleDensity?: number;
 }
 
+interface Particle {
+  id: number;
+  x: number;
+  y: number;
+  size: number;
+  duration: number;
+  delay: number;
+}
+
 export const SparklesCore = ({
   id = "sparkles",
   className,
@@ -25,8 +34,10 @@ export const SparklesCore = ({
   particleColor = "#FFF",
   particleDensity = 100,
 }: SparklesProps) => {
-  const particles = React.useMemo(() => {
-    return Array.from({ length: particleDensity }).map((_, i) => ({
+  const [particles, setParticles] = useState<Particle[]>([]);
+
+  useEffect(() => {
+    const newParticles = Array.from({ length: particleDensity }).map((_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
@@ -34,7 +45,12 @@ export const SparklesCore = ({
       duration: (2 + Math.random() * 4) / speed,
       delay: Math.random() * 2,
     }));
+    setParticles(newParticles);
   }, [particleDensity, minSize, maxSize, speed]);
+
+  if (particles.length === 0) {
+    return <div className={cn("absolute inset-0 overflow-hidden", className)} style={{ background }} />;
+  }
 
   return (
     <div
@@ -77,15 +93,28 @@ export const Meteors = ({
   number?: number;
   className?: string;
 }) => {
-  const meteors = React.useMemo(() => {
-    return Array.from({ length: number }).map((_, i) => ({
+  const [meteors, setMeteors] = React.useState<Array<{
+    id: number;
+    top: number;
+    left: number;
+    delay: number;
+    duration: number;
+  }>>([]);
+
+  React.useEffect(() => {
+    const newMeteors = Array.from({ length: number }).map((_, i) => ({
       id: i,
       top: Math.random() * 50,
       left: Math.random() * 100,
       delay: Math.random() * 5,
       duration: 0.6 + Math.random() * 0.8,
     }));
+    setMeteors(newMeteors);
   }, [number]);
+
+  if (meteors.length === 0) {
+    return <div className={cn("absolute inset-0 overflow-hidden", className)} />;
+  }
 
   return (
     <div className={cn("absolute inset-0 overflow-hidden", className)}>

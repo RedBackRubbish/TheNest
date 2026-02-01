@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { motion, useMotionTemplate, useMotionValue } from "motion/react";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback } from "react";
 
 export const GlowingCard = ({
   children,
@@ -17,6 +17,9 @@ export const GlowingCard = ({
 }) => {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
+
+  const background1 = useMotionTemplate`radial-gradient(400px circle at ${mouseX}px ${mouseY}px, ${gradientColor}20, transparent 80%)`;
+  const background2 = useMotionTemplate`radial-gradient(200px circle at ${mouseX}px ${mouseY}px, ${gradientColor}40, transparent 80%)`;
 
   const handleMouseMove = useCallback(
     ({ clientX, clientY, currentTarget }: React.MouseEvent<HTMLDivElement>) => {
@@ -37,28 +40,11 @@ export const GlowingCard = ({
     >
       <motion.div
         className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition duration-300 group-hover:opacity-100"
-        style={{
-          background: useMotionTemplate`
-            radial-gradient(
-              400px circle at ${mouseX}px ${mouseY}px,
-              ${gradientColor}20,
-              transparent 80%
-            )
-          `,
-        }}
+        style={{ background: background1 }}
       />
       <motion.div
         className="pointer-events-none absolute -inset-px rounded-xl"
-        style={{
-          background: useMotionTemplate`
-            radial-gradient(
-              200px circle at ${mouseX}px ${mouseY}px,
-              ${gradientColor}40,
-              transparent 80%
-            )
-          `,
-          opacity: 0,
-        }}
+        style={{ background: background2, opacity: 0 }}
         whileHover={{ opacity: 1 }}
       />
       <div
@@ -83,6 +69,8 @@ export const CardSpotlight = ({
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
+  const background = useMotionTemplate`radial-gradient(350px circle at ${mouseX}px ${mouseY}px, rgba(255, 255, 255, 0.05), transparent 80%)`;
+
   const handleMouseMove = useCallback(
     ({ clientX, clientY, currentTarget }: React.MouseEvent<HTMLDivElement>) => {
       const { left, top } = currentTarget.getBoundingClientRect();
@@ -102,15 +90,7 @@ export const CardSpotlight = ({
     >
       <motion.div
         className="pointer-events-none absolute -inset-px opacity-0 transition duration-500 group-hover:opacity-100"
-        style={{
-          background: useMotionTemplate`
-            radial-gradient(
-              350px circle at ${mouseX}px ${mouseY}px,
-              rgba(255, 255, 255, 0.05),
-              transparent 80%
-            )
-          `,
-        }}
+        style={{ background }}
       />
       {children}
     </div>
