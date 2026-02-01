@@ -8,16 +8,23 @@ The Nest is a sovereign AI coding agent architecture that prioritizes **Governan
 The core logic is not a linear script, but a State Graph (`src/core/senate.py`):
 
 1.  **Onyx (The Sentinel)**: Performs an **Intent Audit** (Fast LLM). Bans malicious usage (surveillance, destruction, hacking) before any code is generated.
-2.  **Ignis (The Forge)**: Synthesizes high-performance Python code compliant with the **Rosetta Constraint** (Code + Explanation + Signature).
-3.  **Hydra (The Adversary)**: Injects "venom" (metamorphic tests) into the code to find edge cases and privacy leaks.
-4.  **Onyx (The Sentinel)**: Performs a final **Code Audit** (Deep LLM) on the binary signature.
+2.  **Ignis (The Forge)**: Enters **The Crucible**. Instead of generating one solution, Ignis spawns three variants:
+    *   **SPEED**: Optimized for performance.
+    *   **SAFETY**: Optimized for error handling and defense.
+    *   **CLARITY**: Optimized for readability.
+3.  **Hydra (The Adversary)**: Runs **The Gauntlet**. Injects "venom" (metamorphic tests) into *all* candidates simultaneously to find failures.
+4.  **Onyx (The Arbiter)**: Selects a **Champion** from the survivors based on test results and security profile.
+5.  **Onyx (The Sentinel)**: Performs a final **Code Audit** on the Champion's binary signature.
 
-## 🧠 The Synapse (Brain)
+## 🧠 The Synapse (Brain) & Omega-Tier Routing
 
-The system is powered by a Bi-Cameral Inference Engine (`src/core/brain.py`):
--   **Deep Mode (`gpt-5.2`)**: Used for coding (Ignis) and security audits (Onyx).
--   **Fast Mode (`gpt-4o`)**: Used for rapid intent checks and routing.
--   **Lobotomized Mode**: Gracefully degrades to internal mock logic if no API Keys are present.
+The system is powered by a **Granular Model Routing** engine (`src/core/brain.py`), allowing specific cognitive specializations:
+
+*   **Ignis (Synthesis)**: Targets `claude-opus-4.5` for complex code generation.
+*   **Hydra (Context)**: Targets `gemini-3-pro` for massive-context red teaming.
+*   **Onyx (Reasoning)**: Targets `gpt-5.2` for logic, ethics, and governance.
+
+*Note: The system supports the **Gateway Pattern** (OpenRouter/Gateway) via `OPENAI_BASE_URL`.*
 
 ## ⚡️ Interface & API
 
@@ -31,7 +38,7 @@ The Nest exposes a **FastAPI** layer (`src/api.py`) for external integration:
 
 ### 1. Prerequisites
 -   Python 3.9+
--   OpenAI API Key (Optional, system mocks without it)
+-   OpenAI API Key (or OpenRouter/Gateway Key)
 
 ### 2. Installation
 #### Option A: Docker (Recommended)
@@ -52,11 +59,20 @@ pip install -r requirements.txt
 ```
 
 ### 3. Configuration
-Create a `.env` file:
+Create a `.env` file (Gateway Pattern Example):
 ```bash
-OPENAI_API_KEY=sk-...
-NEST_MODEL_DEEP=gpt-5.2
-NEST_MODEL_FAST=gpt-4o
+# Gateway Configuration
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+OPENAI_API_KEY=sk-or-your-key
+
+# Default Brain
+NEST_MODEL_DEEP=openai/gpt-5-turbo
+NEST_MODEL_FAST=openai/gpt-4o
+
+# Granular Routing (Omega Models)
+IGNIS_MODEL=anthropic/claude-opus-4.5
+HYDRA_MODEL=google/gemini-3-pro
+ONYX_MODEL=openai/gpt-5.2
 ```
 
 ### 4. Ignite the Server
@@ -64,10 +80,9 @@ NEST_MODEL_FAST=gpt-4o
 python3 -m uvicorn src.api:app --reload --port 8000
 ```
 
-### 5. Submit a Mission (CLI Example)
+### 5. Run the Test Suite
 ```bash
-# Test the WebSocket Interface
-python3 tests/test_ws_client.py "Write a fibonacci server"
+python3 -m pytest tests/
 ```
 
 ## 📂 Project Structure
@@ -85,10 +100,11 @@ src/
 │   └── chronicle.py    # Long-term Memory (JSON/Vector)
 └── security/
     └── signer.py       # Cryptographic Signatures
+tests/                  # Comprehensive Pytest Suite
 ```
 
 ## 📜 Governance Status
--   **Sprint**: 9 (The Nervous System)
+-   **Sprint**: 12 (The Crucible)
 -   **Status**: Operational / Sovereign
 -   **Protocol Version**: 5.2
 
