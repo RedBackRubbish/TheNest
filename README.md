@@ -34,8 +34,21 @@ The Nest exposes a **FastAPI** layer (`src/api.py`) for external integration:
 -   OpenAI API Key (Optional, system mocks without it)
 
 ### 2. Installation
+#### Option A: Docker (Recommended)
+The entire system (API, Oracle, Redis) can be launched with a single command.
+
+```bash
+docker-compose up --build
+```
+
+- API: http://localhost:8000
+- WebSocket: ws://localhost:8000/ws/senate
+- Redis: localhost:6379
+
+#### Option B: Manual
 ```bash
 pip install -r requirements.txt
+# Ensure Redis is running separately
 ```
 
 ### 3. Configuration

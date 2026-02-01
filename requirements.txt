@@ -1,8 +1,9 @@
-langgraph
-langchain
-langchain_openai
-pydantic
-psycopg2-binary
+fastapi
+uvicorn
+openai
 redis
+websockets
+pydantic
 pytest
-python-dotenv
+pytest-asyncio
+httpx

@@ -36,16 +36,21 @@ class Brain:
                     system_prompt: str, 
                     user_prompt: str, 
                     mode: str = "deep", 
-                    temperature: float = 0.0) -> Dict[str, Any]:
+                    temperature: float = 0.0,
+                    model: Optional[str] = None) -> Dict[str, Any]:
         """
         Executes a reasoning step.
         mode: "deep" (Ignis/Onyx) or "fast" (Aeros/Hydra-Lite)
+        model: Explicit override for Granular Model Routing (e.g. claude-opus-4.5)
         """
         if not self.client:
             return self._mock_response(user_prompt)
 
         # Select the hemisphere
-        selected_model = self.model_deep if mode == "deep" else self.model_fast
+        if model:
+            selected_model = model
+        else:
+            selected_model = self.model_deep if mode == "deep" else self.model_fast
 
         try:
             logger.info(f"Synapse firing... [Model: {selected_model} | Mode: {mode}]")

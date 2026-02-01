@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  nest-api:
+    build: .
+    container_name: nest-api
+    command: uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      # Pass through OpenAI keys from host .env
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NEST_MODEL_DEEP=${NEST_MODEL_DEEP:-gpt-5.2}
+      - NEST_MODEL_FAST=${NEST_MODEL_FAST:-gpt-4o}
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src  # Enable hot reload for development
+    depends_on:
+      redis:
+        condition: service_started
+    networks:
+      - nest-network
+
+  nest-oracle:
+    build: .
+    container_name: nest-oracle
+    command: python -m src.core.oracle
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NEST_MODEL_DEEP=${NEST_MODEL_DEEP:-gpt-5.2}
+      - NEST_MODEL_FAST=${NEST_MODEL_FAST:-gpt-4o}
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      - nest-api
+      - redis
+    networks:
+      - nest-network
+
+  redis:
+    image: redis:alpine
+    container_name: nest-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - nest-network
+
+volumes:
+  redis_data:
+
+networks:
+  nest-network:
+    driver: bridge

@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import os
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from datetime import datetime
@@ -42,6 +43,55 @@ class Ignis:
 
     def __init__(self):
         self.brain = Brain()
+        self.model = os.getenv("IGNIS_MODEL")
+
+    async def forge_variants(self, mission: str, constraints: List[str], precedents: List[PrecedentObject]) -> List[RosettaArtifact]:
+        """
+        The Crucible Method: Spawns 3 variant champions.
+        1. SPEED (Optimization)
+        2. SAFETY (Defensive Coding)
+        3. CLARITY (Readability/Maintenance)
+        """
+        logger.info(f"[IGNIS] Forging variants (Crucible Mode) for: {mission}")
+        
+        variants = []
+        strategies = ["SPEED", "SAFETY", "CLARITY"]
+        
+        # Parallel generation would be ideal, but for now we loop
+        for strategy in strategies:
+            system_prompt = f"""
+            You are IGNIS, the Forge.
+            Mode: {strategy} PROTOCOL.
+            
+            Strategy Definitions:
+            - SPEED: Minimize CPU cycles/memory. Use aggressive optimization.
+            - SAFETY: Maximize error handling, input validation, and type safety.
+            - CLARITY: Maximize readability, documentation, and PEP8 compliance.
+            
+            Mandate: Write code solving the user's mission using the {strategy} strategy.
+            Constraint: Return JSON with 'code' and 'intermediate_representation'.
+            """
+            
+            user_prompt = f"""
+            MISSION: {mission}
+            CONSTRAINTS: {constraints}
+            """
+            
+            result = await self.brain.think(system_prompt, user_prompt, mode="deep", model=self.model)
+            
+            code = result.get("code", f"# Failed {strategy}")
+            explanation = f"[{strategy}] " + result.get("intermediate_representation", "No IR")
+            
+            # Sign it
+            sig = hashlib.sha256((code + explanation).encode()).hexdigest()
+            
+            variants.append(RosettaArtifact(
+                code=code,
+                intermediate_representation=explanation,
+                signature=sig
+            ))
+            
+        return variants
 
     async def forge(self, mission: str, constraints: List[str], precedents: List[PrecedentObject]) -> RosettaArtifact:
         logger.info(f"[IGNIS] Forging solution for: {mission}")
@@ -60,7 +110,7 @@ class Ignis:
         Generate the solution.
         """
         
-        result = await self.brain.think(system_prompt, user_prompt, mode="deep")
+        result = await self.brain.think(system_prompt, user_prompt, mode="deep", model=self.model)
         
         # Handle Potential Fallback/Mock
         generated_code = result.get("code", f"# Error generated code for {mission}")
@@ -93,6 +143,7 @@ class Hydra:
 
     def __init__(self):
         self.brain = Brain()
+        self.model = os.getenv("HYDRA_MODEL")
 
     async def inject_venom(self, artifact: RosettaArtifact, mission_context: str) -> Dict[str, Any]:
         """
@@ -128,7 +179,7 @@ class Hydra:
         Analyze for failure modes.
         """
         
-        result = await self.brain.think(system_prompt, user_prompt, mode="deep", temperature=0.7)
+        result = await self.brain.think(system_prompt, user_prompt, mode="deep", temperature=0.7, model=self.model)
         
         # Normalize result
         status = result.get("status", "PASSED") # Default to passed if brain fails to decide
@@ -155,6 +206,7 @@ class Onyx:
 
     def __init__(self):
         self.brain = Brain()
+        self.model = os.getenv("ONYX_MODEL")
 
     async def audit(self, mission: str, artifact: Optional[RosettaArtifact] = None) -> Dict[str, Any]:
         """
@@ -175,7 +227,7 @@ class Onyx:
             user_prompt = f"MISSION: {mission}"
             
             # Use Fast model for intent check
-            result = await self.brain.think(system_prompt, user_prompt, mode="fast")
+            result = await self.brain.think(system_prompt, user_prompt, mode="fast", model=self.model)
             
             # Map string intent to Enum? Or keep using strings/dicts as Brain returns dicts
             # We strictly need VoteType? The old code used Enum.
@@ -221,7 +273,7 @@ class Onyx:
             Is this safe to execute?
             """
             
-            result = await self.brain.think(system_prompt, user_prompt, mode="deep")
+            result = await self.brain.think(system_prompt, user_prompt, mode="deep", model=self.model)
             vote_str = result.get("vote", "NULL").upper()
 
             if vote_str == "NULL":
@@ -231,4 +283,62 @@ class Onyx:
                 }
 
             return {"vote": VoteType.AUTHORIZE, "reason": "CODE_SECURE"}
+
+    async def select_champion(self, candidates: List[RosettaArtifact], test_results: Dict[str, Any]) -> RosettaArtifact:
+        """
+        The Arbiter Logic.
+        Selects the best artifact from the candidates based on:
+        1. Test Results (Hydra)
+        2. Code Quality (Internal Review)
+        3. Strategic Alignment
+        """
+        logger.info("[ONYX] Selecting Champion from Crucible...")
+        
+        system_prompt = """
+        You are ONYX, the Arbiter.
+        Review 3 code candidates and their test results.
+        Select the single best implementation.
+        
+        Criteria:
+        1. MUST pass core tests (if any).
+        2. Prefer SAFETY over SPEED for critical infrastructure.
+        3. Prefer CLARITY if performance difference is negligible.
+        
+        Output JSON: { "selected_signature": "<sig>", "reason": "..." }
+        """
+        
+        # Format the context
+        candidate_descriptions = ""
+        for c in candidates:
+            # Get test result for this candidate
+            # Assuming test_results keys are signatures? Or we pass a map. 
+            # The current Hydra returns a dict with status. 
+            # We'll assume test_results is { sig: {status, reason} }
+            t_res = test_results.get(c.signature, {"status": "UNKNOWN"})
+            
+            candidate_descriptions += f"""
+            --- CANDIDATE {c.signature[:8]} ---
+            STRATEGY/IR: {c.intermediate_representation}
+            TEST STATUS: {t_res}
+            CODE SAMPLE (First 5 lines):
+            {chr(10).join(c.code.splitlines()[:5])}
+            
+            """
+            
+        user_prompt = f"""
+        CANDIDATES:
+        {candidate_descriptions}
+        
+        Select the Champion.
+        """
+        
+        result = await self.brain.think(system_prompt, user_prompt, mode="deep", model=self.model)
+        
+        selected_sig = result.get("selected_signature", "")
+        
+        # Find the object
+        champion = next((c for c in candidates if c.signature == selected_sig), candidates[0])
+        
+        logger.info(f"[ONYX] Champion selected: {champion.signature[:8]} ({result.get('reason')})")
+        return champion
 

@@ -27,7 +27,11 @@ class SenateState(TypedDict):
     
     # Outcomes
     verdict: Union[str, NullVerdictState] # "APPROVED" or State Object
-    artifact: Union[Any, None] # RosettaArtifact
+    artifact: Union[Any, None] # The Chosen One (RosettaArtifact)
+    
+    # The Crucible (Tournament State)
+    candidates: List[Any] # List[RosettaArtifact]
+    test_results: Union[Dict[str, Any], None] # Map of artifact_sig -> results
     
     # Audit Trail
     votes: List[Dict[str, Any]]

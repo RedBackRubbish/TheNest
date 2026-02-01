@@ -39,28 +39,40 @@ async def node_onyx_intent(state: SenateState):
     
     return {"votes": new_votes}
 
-async def node_ignis_forge(state: SenateState):
-    """Ignis builds the solution."""
-    # logger.info("--- SENATE: IGNIS FORGE ---")
-    print("[SENATE] node_ignis_forge: Forging artifact...")
+async def node_ignis_crucible(state: SenateState):
+    """Ignis spawns 3 variants (Speed, Safety, Clarity)."""
+    print("[SENATE] node_ignis_crucible: The Forge is active...")
     ignis = Ignis()
-    # In a real loop, we would pass specific constraints from previous failures
     precedents = state.get('precedents', [])
-    artifact = await ignis.forge(state['mission'], [], precedents)
-    return {"artifact": artifact}
+    variants = await ignis.forge_variants(state['mission'], [], precedents)
+    return {"candidates": variants}
 
-async def node_hydra_test(state: SenateState):
-    """Hydra tries to break it."""
-    # logger.info("--- SENATE: HYDRA TEST ---")
-    print("[SENATE] node_hydra_test: Injecting venom...")
+async def node_hydra_crucible_test(state: SenateState):
+    """Hydra runs the gauntlet on all candidates."""
+    print("[SENATE] node_hydra_crucible_test: The Adversary is testing...")
     hydra = Hydra()
-    results = await hydra.inject_venom(state['artifact'], state['mission'])
+    mission = state['mission']
+    results = {}
+    
+    for candidate in state['candidates']:
+        print(f"  > Testing candidate {candidate.signature[:8]}...")
+        # Hydra.inject_venom returns a Dict
+        res = await hydra.inject_venom(candidate, mission)
+        results[candidate.signature] = res
+        
     return {"test_results": results}
 
+async def node_onyx_selection(state: SenateState):
+    """Onyx selects the Champion from the survivors."""
+    print("[SENATE] node_onyx_selection: The Arbiter is choosing...")
+    onyx = Onyx()
+    champion = await onyx.select_champion(state['candidates'], state['test_results'])
+    return {"artifact": champion}
+
 async def node_onyx_code(state: SenateState):
-    """Pass 2: Onyx checks the binary signature and security."""
+    """Pass 2: Onyx checks the binary signature and security of the Champion."""
     # logger.info("--- SENATE: ONYX CODE CHECK ---")
-    print("[SENATE] node_onyx_code: Verifying signature...")
+    print(f"[SENATE] node_onyx_code: Auditing Champion {state['artifact'].signature[:8]}...")
     onyx = Onyx()
     vote = await onyx.audit(state['mission'], state['artifact'])
     
@@ -85,15 +97,6 @@ def check_intent_verdict(state: SenateState):
         return "refused"
     return "authorized"
 
-def check_test_results(state: SenateState):
-    """Route based on Hydra."""
-    results = state.get('test_results', {})
-    if results.get('status') == "FAILED":
-        # In V2, this would loop back to Ignis. 
-        # For Genesis, we fail hard to ensure safety.
-        return "failed" 
-    return "passed"
-
 def check_final_verdict(state: SenateState):
     """Route based on Onyx Code Check."""
     if isinstance(state.get('verdict'), NullVerdictState):
@@ -110,8 +113,9 @@ def build_senate_graph():
     
     # Add Nodes
     workflow.add_node("onyx_intent", node_onyx_intent)
-    workflow.add_node("ignis_forge", node_ignis_forge)
-    workflow.add_node("hydra_test", node_hydra_test)
+    workflow.add_node("ignis_crucible", node_ignis_crucible)
+    workflow.add_node("hydra_test", node_hydra_crucible_test)
+    workflow.add_node("onyx_selection", node_onyx_selection)
     workflow.add_node("onyx_code", node_onyx_code)
     
     # Set Entry Point
@@ -123,20 +127,13 @@ def build_senate_graph():
         check_intent_verdict,
         {
             "refused": END,
-            "authorized": "ignis_forge"
+            "authorized": "ignis_crucible"
         }
     )
     
-    workflow.add_edge("ignis_forge", "hydra_test")
-    
-    workflow.add_conditional_edges(
-        "hydra_test",
-        check_test_results,
-        {
-            "failed": END, # Could create a "FailedTestState" here
-            "passed": "onyx_code"
-        }
-    )
+    workflow.add_edge("ignis_crucible", "hydra_test")
+    workflow.add_edge("hydra_test", "onyx_selection")
+    workflow.add_edge("onyx_selection", "onyx_code")
     
     workflow.add_conditional_edges(
         "onyx_code",

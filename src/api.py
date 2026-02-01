@@ -4,6 +4,9 @@ from typing import List, Dict, Any, Optional
 import logging
 import dataclasses
 import json
+import os
+import hashlib
+import redis.asyncio as redis
 from contextlib import asynccontextmanager
 
 # Import the Kernel
@@ -17,6 +20,7 @@ logger = logging.getLogger("TheNest.API")
 
 # Singleton State
 elder: Optional[TheElder] = None
+redis_client: Optional[redis.Redis] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,7 +28,7 @@ async def lifespan(app: FastAPI):
     The Genesis Boot Sequence for the API.
     Ignites the Kernel when the server starts.
     """
-    global elder
+    global elder, redis_client
     logger.info("--- SYSTEM STARTUP ---")
     logger.info("Initializing The Nest Kernel...")
     
@@ -32,11 +36,22 @@ async def lifespan(app: FastAPI):
     # TheElder initializes its own Chronicle connection synchronously in __init__
     elder = TheElder()
     
+    # Initialize Redis
+    try:
+        redis_client = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
+        await redis_client.ping()
+        logger.info("Connected to Redis (Oracle Bus).")
+    except Exception as e:
+        logger.warning(f"Failed to connect to Redis: {e}. Oracle features disabled.")
+        redis_client = None
+    
     logger.info("The Nest is ONLINE and listening.")
     yield
     
     # Shutdown
     logger.info("--- SYSTEM SHUTDOWN ---")
+    if redis_client:
+        await redis_client.close()
 
 app = FastAPI(title="The Nest: Synthetic Civilization", version="5.2", lifespan=lifespan)
 
@@ -97,6 +112,15 @@ async def submit_mission(req: MissionRequest):
     
     logger.info(f"API received mission request: {req.mission}")
     
+    # Check Shadow Cache (Oracle Feature)
+    if redis_client:
+        cache_key = hashlib.sha256(req.mission.encode()).hexdigest()
+        cached_data = await redis_client.get(f"shadow_cache:{cache_key}")
+        if cached_data:
+            logger.info("PRECOGNITION DETECTED. Returning Cached Artifact.")
+            cached_result = json.loads(cached_data)
+            return MissionResponse(**cached_result)
+
     try:
         # Run the mission (Async call)
         state = await elder.run_mission(req.mission)
@@ -106,9 +130,15 @@ async def submit_mission(req: MissionRequest):
         status = "PROCESSING"
         message = None
         
-        if verdict == "APPROVED":
+        if verdict == "APPROVED" or (isinstance(verdict, dict) and verdict.get('status') == 'APPROVED'):
             status = "APPROVED"
             message = "Mission Authorized and Executed."
+            
+            # Notify Oracle (Fire and Forget)
+            if redis_client:
+                data = json.dumps({"mission": req.mission})
+                await redis_client.rpush("oracle_queue", data)
+
         elif isinstance(verdict, NullVerdictState):
             status = "STOP_WORK_ORDER"
             message = f"Mission Refused by Governance: {verdict.context_summary}"
