@@ -9,8 +9,8 @@ import { SenateChamber } from "@/components/senate/senate-chamber"
 import { MissionInput } from "@/components/senate/mission-input"
 import { VerdictDisplay } from "@/components/senate/verdict-display"
 import { PhaseTimeline } from "@/components/senate/phase-timeline"
-import { ArtifactViewer } from "@/components/artifact/artifact-viewer"
-import { ChronicleBrowser } from "@/components/chronicle/chronicle-browser"
+import { ArtifactViewer } from "@/components/senate/artifact-viewer"
+import { ChronicleBrowser } from "@/components/senate/chronicle-browser"
 import type { MissionState, DragonName, AgentVote } from "@/lib/types"
 
 // Simulated deliberation for demo (replace with real WebSocket)
