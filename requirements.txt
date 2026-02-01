@@ -1,0 +1,8 @@
+langgraph
+langchain
+langchain_openai
+pydantic
+psycopg2-binary
+redis
+pytest
+python-dotenv
