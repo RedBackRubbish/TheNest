@@ -30,7 +30,8 @@ class Brain:
             logger.warning("OPENAI_API_KEY not found or package missing. Brain running in LOBOTOMIZED mode (Mocking).")
             self.client = None
         else:
-            self.client = AsyncOpenAI(api_key=api_key)
+            base_url = os.getenv("OPENAI_BASE_URL")
+            self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
 
     async def think(self, 
                     system_prompt: str, 
