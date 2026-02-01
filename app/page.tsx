@@ -7,8 +7,39 @@ import {
   Check, X, Loader2, Send, Sparkles, CheckCircle2, 
   XCircle, AlertTriangle, Clock, Activity
 } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+// ============ UTILITIES ============
+function cn(...classes: (string | boolean | undefined)[]) {
+  return classes.filter(Boolean).join(" ")
+}
+
+// ============ BUTTON COMPONENT ============
+function Button({ 
+  children, 
+  onClick, 
+  disabled, 
+  className 
+}: { 
+  children: React.ReactNode
+  onClick?: () => void
+  disabled?: boolean
+  className?: string
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium",
+        "bg-primary text-primary-foreground hover:bg-primary/90",
+        "transition-colors focus-visible:outline-none focus-visible:ring-2",
+        "disabled:pointer-events-none disabled:opacity-50",
+        className
+      )}
+    >
+      {children}
+    </button>
+  )
+}
 
 // ============ TYPES ============
 type DragonName = "ONYX" | "IGNIS" | "HYDRA" | "ETHER" | "TERRA" | "AEROS"
