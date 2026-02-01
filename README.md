@@ -52,11 +52,22 @@ docker-compose up --build
 - WebSocket: ws://localhost:8000/ws/senate
 - Redis: localhost:6379
 
-#### Option B: Manual
+#### Option B: Manual (Split)
+**Backend:**
 ```bash
 pip install -r requirements.txt
-# Ensure Redis is running separately
+python3 -m uvicorn src.api:app --reload --port 8000
 ```
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+# Dashboard at http://localhost:3000
+```
+
+### 3. Configuration
 
 ### 3. Configuration
 Create a `.env` file (Gateway Pattern Example):
