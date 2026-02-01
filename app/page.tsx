@@ -1,50 +1,17 @@
 "use client"
 
-// Force rebuild - v1
 import { useState, useRef, useEffect } from "react"
-import type React from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Shield, Flame, GitBranch, Cpu, Database, Compass, 
   Check, X, Loader2, Send, Sparkles, CheckCircle2, 
-  XCircle, AlertTriangle, Clock, Activity
+  XCircle, AlertTriangle, Clock
 } from "lucide-react"
 
-// ============ UTILITIES ============
 function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(" ")
 }
 
-// ============ BUTTON COMPONENT ============
-function Button({ 
-  children, 
-  onClick, 
-  disabled, 
-  className 
-}: { 
-  children: React.ReactNode
-  onClick?: () => void
-  disabled?: boolean
-  className?: string
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium",
-        "bg-primary text-primary-foreground hover:bg-primary/90",
-        "transition-colors focus-visible:outline-none focus-visible:ring-2",
-        "disabled:pointer-events-none disabled:opacity-50",
-        className
-      )}
-    >
-      {children}
-    </button>
-  )
-}
-
-// ============ TYPES ============
 type DragonName = "ONYX" | "IGNIS" | "HYDRA" | "ETHER" | "TERRA" | "AEROS"
 type VoteValue = "APPROVE" | "NULL" | "PENDING" | "ABSTAIN"
 type VerdictStatus = "PENDING" | "DELIBERATING" | "APPROVED" | "REFUSED" | "UNGOVERNED"
@@ -55,13 +22,12 @@ interface Dragon {
   title: string
   mandate: string
   color: string
-  icon: string
+  iconType: "shield" | "flame" | "git-branch" | "cpu" | "database" | "compass"
 }
 
 interface AgentVote {
   agent: DragonName
   vote: VoteValue
-  reasoning?: string
 }
 
 interface MissionState {
@@ -72,35 +38,35 @@ interface MissionState {
   votes: AgentVote[]
   artifact?: {
     code: string
-    intermediateRepresentation: string
-    signature: string
     language: string
   }
 }
 
-// ============ DATA ============
 const DRAGONS: Record<DragonName, Dragon> = {
-  ONYX: { name: "ONYX", title: "The Auditor", mandate: "Security & Policy", color: "hsl(280, 65%, 55%)", icon: "shield" },
-  IGNIS: { name: "IGNIS", title: "The Engine", mandate: "Code Generation", color: "hsl(15, 85%, 55%)", icon: "flame" },
-  HYDRA: { name: "HYDRA", title: "The Adversary", mandate: "Testing & QA", color: "hsl(200, 85%, 50%)", icon: "git-branch" },
-  ETHER: { name: "ETHER", title: "The Bridge", mandate: "Hardware Interface", color: "hsl(185, 75%, 45%)", icon: "cpu" },
-  TERRA: { name: "TERRA", title: "The Archive", mandate: "Data Integrity", color: "hsl(145, 65%, 42%)", icon: "database" },
-  AEROS: { name: "AEROS", title: "The Navigator", mandate: "External Interface", color: "hsl(220, 70%, 60%)", icon: "compass" },
+  ONYX: { name: "ONYX", title: "The Auditor", mandate: "Security", color: "#a855f7", iconType: "shield" },
+  IGNIS: { name: "IGNIS", title: "The Engine", mandate: "Generation", color: "#f97316", iconType: "flame" },
+  HYDRA: { name: "HYDRA", title: "The Adversary", mandate: "Testing", color: "#3b82f6", iconType: "git-branch" },
+  ETHER: { name: "ETHER", title: "The Bridge", mandate: "Hardware", color: "#06b6d4", iconType: "cpu" },
+  TERRA: { name: "TERRA", title: "The Archive", mandate: "Data", color: "#22c55e", iconType: "database" },
+  AEROS: { name: "AEROS", title: "The Navigator", mandate: "Interface", color: "#6366f1", iconType: "compass" },
 }
 
 const DRAGON_ORDER: DragonName[] = ["ONYX", "IGNIS", "HYDRA", "ETHER", "TERRA", "AEROS"]
 const PHASES: PhaseType[] = ["INTENT_CHECK", "FORGE", "GAUNTLET", "SELECTION", "AUDIT", "COMPLETE"]
 
-const ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
-  shield: Shield,
-  flame: Flame,
-  "git-branch": GitBranch,
-  cpu: Cpu,
-  database: Database,
-  compass: Compass,
+function DragonIcon({ type, className, style }: { type: string; className?: string; style?: React.CSSProperties }) {
+  const icons: Record<string, typeof Shield> = {
+    shield: Shield,
+    flame: Flame,
+    "git-branch": GitBranch,
+    cpu: Cpu,
+    database: Database,
+    compass: Compass,
+  }
+  const Icon = icons[type] || Shield
+  return <Icon className={className} style={style} />
 }
 
-// ============ DRAGON AVATAR ============
 function DragonAvatar({ name, vote, isActive, delay = 0 }: {
   name: DragonName
   vote: VoteValue
@@ -108,15 +74,7 @@ function DragonAvatar({ name, vote, isActive, delay = 0 }: {
   delay?: number
 }) {
   const dragon = DRAGONS[name]
-  const Icon = ICONS[dragon.icon]
   
-  const voteColors = {
-    APPROVE: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/50",
-    NULL: "from-red-500/20 to-red-500/5 border-red-500/50",
-    PENDING: "from-zinc-500/10 to-transparent border-zinc-700/50",
-    ABSTAIN: "from-amber-500/10 to-transparent border-amber-500/30",
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.9 }}
@@ -129,38 +87,39 @@ function DragonAvatar({ name, vote, isActive, delay = 0 }: {
         transition={{ duration: 2, repeat: Infinity }}
         className="relative"
       >
-        <motion.div
-          className={cn(
-            "absolute -inset-1 rounded-full blur-md transition-all duration-700",
-            vote === "APPROVE" && "bg-emerald-500/30",
-            vote === "NULL" && "bg-red-500/40",
-            vote === "PENDING" && isActive && "bg-primary/20"
-          )}
-          animate={isActive ? { opacity: [0.5, 0.8, 0.5] } : {}}
-          transition={{ duration: 2, repeat: Infinity }}
-        />
+        {isActive && (
+          <motion.div
+            className="absolute -inset-2 rounded-full blur-md"
+            style={{ backgroundColor: dragon.color, opacity: 0.3 }}
+            animate={{ opacity: [0.2, 0.4, 0.2] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
+        )}
         
         <div
           className={cn(
-            "relative w-16 h-16 rounded-full bg-gradient-to-b p-[2px] transition-all duration-500",
-            voteColors[vote]
+            "relative w-16 h-16 rounded-full p-[2px] transition-all duration-500",
+            vote === "APPROVE" && "bg-gradient-to-b from-emerald-500/50 to-emerald-500/20",
+            vote === "NULL" && "bg-gradient-to-b from-red-500/50 to-red-500/20",
+            vote === "PENDING" && "bg-gradient-to-b from-zinc-600/50 to-zinc-700/30"
           )}
-          style={{ boxShadow: isActive ? `0 0 40px -10px ${dragon.color}` : undefined }}
+          style={{ boxShadow: isActive ? `0 0 30px -5px ${dragon.color}` : undefined }}
         >
-          <div className="w-full h-full rounded-full bg-card/90 backdrop-blur-sm flex items-center justify-center relative overflow-hidden">
+          <div className="w-full h-full rounded-full bg-zinc-900 flex items-center justify-center relative overflow-hidden">
             <motion.div
               className="absolute inset-0 rounded-full"
-              style={{ backgroundColor: dragon.color }}
-              animate={isActive ? { opacity: [0.05, 0.15, 0.05] } : { opacity: 0.05 }}
+              style={{ backgroundColor: dragon.color, opacity: 0.1 }}
+              animate={isActive ? { opacity: [0.05, 0.15, 0.05] } : {}}
               transition={{ duration: 2, repeat: Infinity }}
             />
             
-            <Icon 
+            <DragonIcon 
+              type={dragon.iconType}
               className={cn(
                 "w-7 h-7 relative z-10 transition-colors duration-300",
                 vote === "APPROVE" && "text-emerald-400",
                 vote === "NULL" && "text-red-400",
-                vote === "PENDING" && "text-muted-foreground"
+                vote === "PENDING" && "text-zinc-400"
               )}
               style={{ color: vote === "PENDING" && isActive ? dragon.color : undefined }}
             />
@@ -186,7 +145,7 @@ function DragonAvatar({ name, vote, isActive, delay = 0 }: {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute inset-0 flex items-center justify-center bg-card/50 rounded-full"
+                className="absolute inset-0 flex items-center justify-center bg-zinc-900/50 rounded-full"
               >
                 <Loader2 className="w-6 h-6 animate-spin" style={{ color: dragon.color }} />
               </motion.div>
@@ -201,19 +160,18 @@ function DragonAvatar({ name, vote, isActive, delay = 0 }: {
             "font-semibold text-sm tracking-wide transition-colors duration-300",
             vote === "APPROVE" && "text-emerald-400",
             vote === "NULL" && "text-red-400",
-            vote === "PENDING" && (isActive ? "text-foreground" : "text-muted-foreground")
+            vote === "PENDING" && (isActive ? "text-white" : "text-zinc-500")
           )}
           style={{ color: vote === "PENDING" && isActive ? dragon.color : undefined }}
         >
           {dragon.name}
         </p>
-        <p className="text-xs text-muted-foreground/70">{dragon.title}</p>
+        <p className="text-xs text-zinc-500">{dragon.title}</p>
       </motion.div>
     </motion.div>
   )
 }
 
-// ============ SENATE CHAMBER ============
 function SenateChamber({ mission }: { mission: MissionState | null }) {
   const getCurrentAgent = (): DragonName | null => {
     if (!mission || mission.status === "APPROVED" || mission.status === "REFUSED") return null
@@ -227,8 +185,7 @@ function SenateChamber({ mission }: { mission: MissionState | null }) {
     <div className="relative">
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <motion.div
-          className="w-64 h-64 rounded-full"
-          style={{ background: `radial-gradient(circle, hsl(var(--primary) / 0.1) 0%, transparent 70%)` }}
+          className="w-64 h-64 rounded-full bg-gradient-radial from-amber-500/10 to-transparent"
           animate={{ scale: mission ? [1, 1.1, 1] : 1, opacity: mission ? [0.3, 0.5, 0.3] : 0.2 }}
           transition={{ duration: 4, repeat: Infinity }}
         />
@@ -236,17 +193,17 @@ function SenateChamber({ mission }: { mission: MissionState | null }) {
       
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
         <motion.div
-          className="w-20 h-20 rounded-full border border-primary/20 flex items-center justify-center"
+          className="w-20 h-20 rounded-full border border-amber-500/20 flex items-center justify-center"
           animate={{ rotate: 360 }}
           transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
         >
           <motion.div
-            className="w-12 h-12 rounded-full border border-primary/30"
+            className="w-12 h-12 rounded-full border border-amber-500/30"
             animate={{ rotate: -360 }}
             transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
           >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-primary/10 to-transparent flex items-center justify-center">
-              <span className="text-xs font-mono text-primary/60 tracking-widest">ELDER</span>
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-500/10 to-transparent flex items-center justify-center">
+              <span className="text-xs font-mono text-amber-500/60 tracking-widest">ELDER</span>
             </div>
           </motion.div>
         </motion.div>
@@ -278,7 +235,6 @@ function SenateChamber({ mission }: { mission: MissionState | null }) {
   )
 }
 
-// ============ MISSION INPUT ============
 function MissionInput({ onSubmit, isProcessing }: { onSubmit: (m: string) => void; isProcessing?: boolean }) {
   const [value, setValue] = useState("")
   const [isFocused, setIsFocused] = useState(false)
@@ -300,19 +256,18 @@ function MissionInput({ onSubmit, isProcessing }: { onSubmit: (m: string) => voi
   return (
     <div className="relative">
       <motion.div
-        className="absolute -inset-1 rounded-2xl opacity-0 blur-xl"
-        style={{ background: "linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--accent) / 0.1))" }}
+        className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/10 blur-xl"
         animate={{ opacity: isFocused ? 1 : 0 }}
       />
       
       <div className={cn(
-        "relative rounded-xl border bg-card/50 backdrop-blur-xl transition-all duration-300",
-        isFocused ? "border-primary/50 shadow-lg" : "border-border/50",
+        "relative rounded-xl border bg-zinc-900/80 backdrop-blur-xl transition-all duration-300",
+        isFocused ? "border-amber-500/50 shadow-lg shadow-amber-500/10" : "border-zinc-800",
         isProcessing && "opacity-70 pointer-events-none"
       )}>
-        <div className="px-4 pt-3 pb-1 border-b border-border/30 flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Mission Brief</span>
+        <div className="px-4 pt-3 pb-1 border-b border-zinc-800 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-amber-500" />
+          <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Mission Brief</span>
         </div>
         
         <textarea
@@ -324,25 +279,32 @@ function MissionInput({ onSubmit, isProcessing }: { onSubmit: (m: string) => voi
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit() }}}
           placeholder="Describe what you need built..."
           disabled={isProcessing}
-          className="w-full min-h-[80px] max-h-[200px] px-4 py-3 bg-transparent text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none text-sm leading-relaxed"
+          className="w-full min-h-[80px] max-h-[200px] px-4 py-3 bg-transparent text-white placeholder:text-zinc-600 resize-none focus:outline-none text-sm leading-relaxed"
           rows={1}
         />
         
-        <div className="px-4 py-3 border-t border-border/30 flex items-center justify-end">
-          <Button onClick={handleSubmit} disabled={!value.trim() || isProcessing} className="gap-2">
+        <div className="px-4 py-3 border-t border-zinc-800 flex items-center justify-end">
+          <button 
+            onClick={handleSubmit} 
+            disabled={!value.trim() || isProcessing}
+            className={cn(
+              "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              "bg-amber-500 text-black hover:bg-amber-400",
+              "disabled:opacity-50 disabled:cursor-not-allowed"
+            )}
+          >
             {isProcessing ? (
               <><Loader2 className="w-4 h-4 animate-spin" /><span>Deliberating...</span></>
             ) : (
               <><Send className="w-4 h-4" /><span>Submit to Senate</span></>
             )}
-          </Button>
+          </button>
         </div>
       </div>
     </div>
   )
 }
 
-// ============ PHASE TIMELINE ============
 function PhaseTimeline({ currentPhase }: { currentPhase: PhaseType }) {
   const phaseLabels: Record<PhaseType, string> = {
     INTENT_CHECK: "Intent Check",
@@ -369,24 +331,25 @@ function PhaseTimeline({ currentPhase }: { currentPhase: PhaseType }) {
             transition={{ delay: i * 0.1 }}
             className={cn(
               "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300",
-              isCurrent && "bg-primary/10 border border-primary/30",
+              isCurrent && "bg-amber-500/10 border border-amber-500/30",
               isComplete && "opacity-60"
             )}
           >
             <div className={cn(
               "w-2 h-2 rounded-full transition-all",
               isComplete && "bg-emerald-500",
-              isCurrent && "bg-primary animate-pulse",
-              !isComplete && !isCurrent && "bg-muted-foreground/30"
+              isCurrent && "bg-amber-500 animate-pulse",
+              !isComplete && !isCurrent && "bg-zinc-700"
             )} />
             <span className={cn(
               "text-sm font-medium",
-              isCurrent && "text-primary",
-              isComplete && "text-muted-foreground line-through"
+              isCurrent && "text-amber-500",
+              isComplete && "text-zinc-500 line-through",
+              !isComplete && !isCurrent && "text-zinc-600"
             )}>
               {phaseLabels[phase]}
             </span>
-            {isCurrent && <Loader2 className="w-3 h-3 animate-spin text-primary ml-auto" />}
+            {isCurrent && <Loader2 className="w-3 h-3 animate-spin text-amber-500 ml-auto" />}
             {isComplete && <Check className="w-3 h-3 text-emerald-500 ml-auto" />}
           </motion.div>
         )
@@ -395,7 +358,6 @@ function PhaseTimeline({ currentPhase }: { currentPhase: PhaseType }) {
   )
 }
 
-// ============ VERDICT DISPLAY ============
 function VerdictDisplay({ mission }: { mission: MissionState }) {
   const getStatusConfig = () => {
     switch (mission.status) {
@@ -406,7 +368,7 @@ function VerdictDisplay({ mission }: { mission: MissionState }) {
       case "UNGOVERNED":
         return { icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/30", label: "UNGOVERNED" }
       default:
-        return { icon: Clock, color: "text-muted-foreground", bg: "bg-muted/10", border: "border-border", label: "DELIBERATING" }
+        return { icon: Clock, color: "text-zinc-400", bg: "bg-zinc-800/50", border: "border-zinc-700", label: "DELIBERATING" }
     }
   }
   
@@ -423,23 +385,23 @@ function VerdictDisplay({ mission }: { mission: MissionState }) {
         <StatusIcon className={cn("w-10 h-10", config.color)} />
         <div>
           <h3 className={cn("text-2xl font-bold tracking-wide", config.color)}>{config.label}</h3>
-          <p className="text-sm text-muted-foreground">Senate Verdict</p>
+          <p className="text-sm text-zinc-500">Senate Verdict</p>
         </div>
       </div>
       
       <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-zinc-400">
           <span>Final vote: {mission.votes.filter(v => v.vote === "APPROVE").length} approve, {mission.votes.filter(v => v.vote === "NULL").length} null</span>
         </div>
         
         {mission.artifact && (
-          <div className="mt-4 p-4 rounded-lg bg-card/50 border border-border/50">
+          <div className="mt-4 p-4 rounded-lg bg-zinc-900 border border-zinc-800">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Generated Artifact</span>
-              <span className="text-xs font-mono text-primary">{mission.artifact.language}</span>
+              <span className="text-xs font-mono text-zinc-500 uppercase tracking-wider">Generated Artifact</span>
+              <span className="text-xs font-mono text-amber-500">{mission.artifact.language}</span>
             </div>
-            <pre className="text-xs text-foreground/80 overflow-x-auto max-h-32">
-              <code>{mission.artifact.code.slice(0, 500)}...</code>
+            <pre className="text-xs text-zinc-300 overflow-x-auto max-h-32">
+              <code>{mission.artifact.code}</code>
             </pre>
           </div>
         )}
@@ -448,18 +410,17 @@ function VerdictDisplay({ mission }: { mission: MissionState }) {
   )
 }
 
-// ============ HEADER ============
 function Header() {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-zinc-800 bg-black/80 backdrop-blur-xl">
       <div className="container mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center">
-            <span className="text-xs font-bold text-primary-foreground">N</span>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+            <span className="text-xs font-bold text-black">N</span>
           </div>
           <div>
-            <h1 className="text-sm font-semibold tracking-wide">THE NEST</h1>
-            <p className="text-xs text-muted-foreground">Sovereign AI Governance</p>
+            <h1 className="text-sm font-semibold tracking-wide text-white">THE NEST</h1>
+            <p className="text-xs text-zinc-500">Sovereign AI Governance</p>
           </div>
         </div>
         
@@ -474,7 +435,6 @@ function Header() {
   )
 }
 
-// ============ MAIN PAGE ============
 export default function HomePage() {
   const [mission, setMission] = useState<MissionState | null>(null)
   const [isSimulating, setIsSimulating] = useState(false)
@@ -518,8 +478,6 @@ export default function HomePage() {
         phase: "COMPLETE",
         artifact: status === "APPROVED" ? {
           code: `// Generated by The Nest Senate\n// Mission: ${missionText}\n\nexport function execute() {\n  console.log("Mission executed");\n}`,
-          intermediateRepresentation: "LOAD params\nVALIDATE\nEXECUTE\nRETURN",
-          signature: "sha256:" + Math.random().toString(36).substring(2, 18),
           language: "TypeScript",
         } : undefined,
       }
@@ -529,54 +487,88 @@ export default function HomePage() {
   }
   
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-black text-white">
       <Header />
       
-      <main className="container mx-auto px-4 pt-20 pb-12">
-        <div className="max-w-6xl mx-auto">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-2 text-balance">
-              Command the <span className="text-primary">Dragon Senate</span>
-            </h2>
-            <p className="text-muted-foreground max-w-lg mx-auto text-balance">
-              Submit your mission brief to the council of sovereign AI agents for deliberation.
-            </p>
-          </motion.div>
+      <main className="pt-20 pb-12 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-12">
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-amber-200 via-amber-400 to-orange-500 bg-clip-text text-transparent"
+            >
+              The Senate Awaits
+            </motion.h1>
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="text-zinc-400 max-w-xl mx-auto"
+            >
+              Submit your mission to the sovereign AI council. Six dragons will deliberate and render their verdict.
+            </motion.p>
+          </div>
           
           <div className="grid lg:grid-cols-[1fr,300px] gap-8">
             <div className="space-y-8">
-              <AnimatePresence mode="wait">
-                {!mission ? (
-                  <motion.div key="input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <MissionInput onSubmit={simulateDeliberation} isProcessing={isSimulating} />
-                  </motion.div>
-                ) : mission.status === "APPROVED" || mission.status === "REFUSED" ? (
-                  <motion.div key="verdict" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-                    <VerdictDisplay mission={mission} />
-                    <Button onClick={() => setMission(null)} variant="outline" className="w-full">
-                      Submit New Mission
-                    </Button>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
+              <SenateChamber mission={mission} />
               
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Activity className="w-4 h-4 text-primary" />
-                  <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Senate Chamber</h3>
-                </div>
-                <SenateChamber mission={mission} />
-              </motion.div>
+              {!mission && <MissionInput onSubmit={simulateDeliberation} isProcessing={isSimulating} />}
+              
+              <AnimatePresence>
+                {mission && (mission.status === "APPROVED" || mission.status === "REFUSED") && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                  >
+                    <VerdictDisplay mission={mission} />
+                    
+                    <motion.button
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                      onClick={() => { setMission(null); setIsSimulating(false) }}
+                      className="mt-4 w-full py-3 rounded-lg border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors text-sm"
+                    >
+                      Submit New Mission
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
             
             <div className="space-y-6">
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm p-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <Clock className="w-4 h-4 text-primary" />
-                  <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Deliberation Phase</h3>
+              {mission && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50"
+                >
+                  <h3 className="text-sm font-medium text-zinc-400 mb-4 uppercase tracking-wider">Deliberation Phase</h3>
+                  <PhaseTimeline currentPhase={mission.phase} />
+                </motion.div>
+              )}
+              
+              <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
+                <h3 className="text-sm font-medium text-zinc-400 mb-4 uppercase tracking-wider">The Council</h3>
+                <div className="space-y-3">
+                  {DRAGON_ORDER.map((name) => {
+                    const dragon = DRAGONS[name]
+                    const vote = mission?.votes.find(v => v.agent === name)?.vote
+                    return (
+                      <div key={name} className="flex items-center gap-3 text-sm">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: dragon.color }} />
+                        <span className="text-zinc-300 flex-1">{dragon.name}</span>
+                        {vote === "APPROVE" && <Check className="w-4 h-4 text-emerald-500" />}
+                        {vote === "NULL" && <X className="w-4 h-4 text-red-500" />}
+                        {vote === "PENDING" && mission && <Loader2 className="w-4 h-4 text-zinc-600 animate-spin" />}
+                      </div>
+                    )
+                  })}
                 </div>
-                <PhaseTimeline currentPhase={mission?.phase || "INTENT_CHECK"} />
-              </motion.div>
+              </div>
             </div>
           </div>
         </div>
