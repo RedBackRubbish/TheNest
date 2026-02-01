@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronUp, Terminal } from "lucide-react";
+import { nestAPI, DeliberationEvent } from "@/lib/api";
 
 interface LogEntry {
   id: string;
@@ -11,34 +12,19 @@ interface LogEntry {
   message: string;
 }
 
-const agentColors = {
+const agentColors: Record<string, string> = {
   ONYX: "#a855f7",
   IGNIS: "#f97316",
   HYDRA: "#22c55e",
   SYSTEM: "#eab308",
 };
 
-const typeColors = {
+const typeColors: Record<string, string> = {
   info: "#60a5fa",
   success: "#22c55e",
   warning: "#eab308",
   error: "#ef4444",
 };
-
-const mockLogs: LogEntry[] = [
-  { id: "1", timestamp: "14:32:01", agent: "SYSTEM", type: "info", message: "Senate session initialized" },
-  { id: "2", timestamp: "14:32:02", agent: "ONYX", type: "info", message: "Intent validation started..." },
-  { id: "3", timestamp: "14:32:03", agent: "ONYX", type: "success", message: "INTENT_CLEARED - No malicious patterns detected" },
-  { id: "4", timestamp: "14:32:04", agent: "IGNIS", type: "info", message: "Crucible ignited. Generating 3 variants..." },
-  { id: "5", timestamp: "14:32:06", agent: "IGNIS", type: "success", message: "Variant SPEED generated (98ms execution)" },
-  { id: "6", timestamp: "14:32:07", agent: "IGNIS", type: "success", message: "Variant SAFETY generated (A+ security score)" },
-  { id: "7", timestamp: "14:32:08", agent: "IGNIS", type: "success", message: "Variant CLARITY generated (92% readability)" },
-  { id: "8", timestamp: "14:32:09", agent: "HYDRA", type: "warning", message: "Entering The Gauntlet. Initiating chaos injection..." },
-  { id: "9", timestamp: "14:32:11", agent: "HYDRA", type: "info", message: "Test suite: boundary_overflow, sql_injection, race_condition" },
-  { id: "10", timestamp: "14:32:14", agent: "HYDRA", type: "success", message: "All candidates survived. SAFETY selected as champion." },
-  { id: "11", timestamp: "14:32:15", agent: "ONYX", type: "info", message: "Final audit commencing..." },
-  { id: "12", timestamp: "14:32:16", agent: "ONYX", type: "success", message: "VERDICT: APPROVED - Code passes all governance checks" },
-];
 
 export function GovernanceLog() {
   const [expanded, setExpanded] = useState(true);
@@ -46,16 +32,58 @@ export function GovernanceLog() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let i = 0;
-    const interval = setInterval(() => {
-      if (i < mockLogs.length) {
-        setLogs((prev) => [...prev, mockLogs[i]]);
-        i++;
-      } else {
-        clearInterval(interval);
-      }
-    }, 800);
-    return () => clearInterval(interval);
+    // Determine API URL
+    // In production, Next.js environment variables should be used. 
+    // If running on Vercel, relative path might work for API routes, but 
+    // for external backend (Railway), we need the full URL.
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    
+    if (!nestAPI.isConfigured()) {
+       nestAPI.configure(apiUrl);
+    }
+
+    const cleanup = nestAPI.connectWebSocket((event: DeliberationEvent) => {
+        if (!event) return;
+        
+        // Ensure timestamp exists and is formatted
+        let timeStr = new Date().toLocaleTimeString();
+        if (event.timestamp) {
+            try {
+                timeStr = new Date(event.timestamp).toLocaleTimeString();
+            } catch (e) {
+                console.error("Invalid timestamp", event.timestamp);
+            }
+        }
+        
+        // Map Phase/Message to Visual Type
+        let msgType: LogEntry["type"] = "info";
+        if (event.phase === "VERDICT") {
+             // Check content for success/failure
+             if (event.message && (event.message.includes("PASSED") || event.message.includes("APPROVED"))) {
+                 msgType = "success";
+             } else {
+                 msgType = "error";
+             }
+        } else if (event.phase === "PROPOSAL") {
+             msgType = "success";
+        } else if (event.phase === "CONVENING") {
+             msgType = "info";
+        } else if (event.agent === "HYDRA") {
+             msgType = "warning";
+        }
+        
+        const newLog: LogEntry = {
+            id: Math.random().toString(36).substring(7),
+            timestamp: timeStr,
+            agent: (event.agent as any) || "SYSTEM",
+            type: msgType,
+            message: event.message || JSON.stringify(event)
+        };
+        
+        setLogs(prev => [...prev, newLog]);
+    });
+    
+    return cleanup;
   }, []);
 
   useEffect(() => {
@@ -86,16 +114,25 @@ export function GovernanceLog() {
           className="h-64 overflow-y-auto p-4 font-mono text-xs bg-black/50"
           style={{ fontFamily: "var(--font-mono)" }}
         >
-          {logs.map((log) => (
-            <div key={log.id} className="flex gap-2 mb-1 leading-relaxed">
-              <span className="text-muted-foreground">[{log.timestamp}]</span>
-              <span style={{ color: agentColors[log.agent] }} className="terminal-glow">
-                [{log.agent}]
-              </span>
-              <span style={{ color: typeColors[log.type] }}>{log.message}</span>
-            </div>
-          ))}
-          <div className="flex items-center gap-1 text-muted-foreground">
+          {logs.length === 0 && (
+              <div className="text-muted-foreground italic flex flex-col gap-2">
+                  <span>Waiting for Senate session...</span>
+                  <span className="text-xs opacity-50">System ready.</span>
+              </div>
+          )}
+          {logs.map((log) => {
+            if (!log) return null;
+            return (
+              <div key={log.id} className="flex gap-2 mb-1 leading-relaxed">
+                <span className="text-muted-foreground">[{log.timestamp}]</span>
+                <span style={{ color: agentColors[log.agent] || agentColors.SYSTEM }} className="terminal-glow">
+                  [{log.agent}]
+                </span>
+                <span style={{ color: typeColors[log.type] }}>{log.message}</span>
+              </div>
+            );
+          })}
+          <div className="flex items-center gap-1 text-muted-foreground mt-2">
             <span className="animate-pulse">▌</span>
             <span>Awaiting next directive...</span>
           </div>
