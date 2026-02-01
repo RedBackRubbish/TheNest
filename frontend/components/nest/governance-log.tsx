@@ -130,8 +130,10 @@ export function GovernanceLog() {
 
               <AnimatePresence>
                 {logs.map((log, index) => {
-                  const agent = agentConfig[log.agent];
-                  const type = typeConfig[log.type];
+                  if (!log || !log.agent || !log.type) return null;
+                  
+                  const agent = agentConfig[log.agent] ?? { color: "#888", emoji: "?" };
+                  const type = typeConfig[log.type] ?? { color: "#888", icon: "●" };
 
                   return (
                     <motion.div
