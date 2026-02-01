@@ -1,47 +1,150 @@
 /**
- * The Nest API Client
- * Connects to the Python/FastAPI backend for governance operations
+ * THE NEST — API Client
+ * Constitutional AI Governance System
+ * 
+ * This module provides typed API access to the backend kernel.
  */
 
-export interface Mission {
-  id?: string;
-  directive: string;
-  timestamp?: string;
+// =============================================================================
+// CONFIGURATION
+// =============================================================================
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// =============================================================================
+// TYPES — Matching Backend Pydantic Models
+// =============================================================================
+
+export interface Telemetry {
+  uptime_seconds: number;
+  cpu_usage_percent: number;
+  ram_usage_mb: number;
+  governance_mode: string;
+  active_agents: string[];
+  latency_ms: number;
+  kernel_status: string;
 }
 
-export interface HealthStatus {
-  status: "ONLINE" | "DEGRADED" | "OFFLINE";
-  kernel_version?: string;
-  uptime?: number;
+export interface HydraFinding {
+  pattern_matched: string;
+  excerpt: string;
+  severity: "CRITICAL" | "HIGH" | "MEDIUM";
 }
 
-export interface DeliberationEvent {
-  phase: string;
+export interface Vote {
   agent: string;
-  message: string;
-  timestamp: string;
+  verdict: "AUTHORIZE" | "VETO" | "ABSTAIN";
+  reasoning: string;
+  confidence: number;
+  governance_mode_active: boolean;
+  hydra_findings_cited: boolean;
 }
 
-export interface Verdict {
-  status: "APPROVED" | "STOP_WORK_ORDER" | "FAILED_TESTS";
-  champion?: string;
-  rationale?: string;
-  article_50?: boolean;
+export interface SenateRecord {
+  state: "pending" | "null_verdict" | "awaiting_appeal" | "authorized" | "ungoverned" | "hydra_override";
+  intent: string;
+  ignis_proposal: string | null;
+  hydra_report: string | null;
+  hydra_findings: HydraFinding[];
+  votes: Vote[];
+  appealable: boolean;
+  metadata: Record<string, unknown>;
 }
 
-export interface ChronicleEntry {
-  id: string;
+export interface MissionResponse {
+  status: "APPROVED" | "STOP_WORK_ORDER" | "FAILED_TESTS" | "UNKNOWN_VERDICT" | "PROCESSING";
   mission: string;
-  verdict: Verdict;
-  timestamp: string;
+  artifact: Record<string, unknown> | null;
+  verdict: Record<string, unknown> | null;
+  message: string | null;
 }
+
+export interface ChronicleCase {
+  id: string;
+  case_type: "precedent" | "appeal" | "null_verdict" | "ungoverned";
+  question: string;
+  ruling: "approved" | "refused" | "ungoverned" | "overturned" | "upheld";
+  timestamp: string;
+  appeal_count: number;
+  votes: Vote[];
+  artifact_hash?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AppealRequest {
+  case_id: string;
+  expanded_context: Record<string, unknown>;
+  constraint_changes: Record<string, unknown>;
+  appellant_reason: string;
+}
+
+export interface AppealResponse {
+  appeal_id: string;
+  original_case_id: string;
+  status: "UPHELD" | "OVERTURNED" | "MODIFIED";
+  original_ruling: string;
+  new_ruling: string;
+  appeal_depth: number;
+  liability_multiplier: number;
+  chronicle_citations: string[];
+  message: string;
+}
+
+// WebSocket Message Types
+export interface WSLogMessage {
+  type: "log";
+  timestamp: string;
+  agent: string;
+  status: string;
+  message: string;
+}
+
+export interface WSStateChangeMessage {
+  type: "state_change";
+  node: "ONYX" | "IGNIS" | "HYDRA";
+  status: "ACTIVE" | "IDLE";
+}
+
+export interface WSArtifactMessage {
+  type: "artifact";
+  code: string;
+  verdict: string;
+}
+
+export interface WSFinalVerdictMessage {
+  type: "final_verdict";
+  result: "AUTHORIZED" | "VETOED" | "HYDRA_OVERRIDE" | "UNGOVERNED";
+  reason?: string;
+  appealable?: boolean;
+  hydra_override?: boolean;
+  unacknowledged_findings?: number;
+  risk_acknowledged?: boolean;
+}
+
+export interface WSErrorMessage {
+  type: "error";
+  message: string;
+}
+
+export type WSMessage = 
+  | WSLogMessage 
+  | WSStateChangeMessage 
+  | WSArtifactMessage 
+  | WSFinalVerdictMessage 
+  | WSErrorMessage;
+
+// =============================================================================
+// API CLIENT
+// =============================================================================
 
 class NestAPIClient {
-  private baseUrl: string = "";
-  private ws: WebSocket | null = null;
+  private baseUrl: string;
+
+  constructor(baseUrl: string = API_BASE) {
+    this.baseUrl = baseUrl;
+  }
 
   configure(url: string) {
-    // Remove trailing slash if present
     this.baseUrl = url.replace(/\/$/, "");
   }
 
@@ -49,64 +152,114 @@ class NestAPIClient {
     return this.baseUrl.length > 0;
   }
 
-  async checkHealth(): Promise<HealthStatus> {
-    const response = await fetch(`${this.baseUrl}/health`);
-    if (!response.ok) {
-      throw new Error("Failed to connect to backend");
-    }
-    return response.json();
+  // Health Check
+  async health(): Promise<{ status: string; governance: string; mode: string }> {
+    const res = await fetch(`${this.baseUrl}/health`);
+    if (!res.ok) throw new Error(`Health check failed: ${res.status}`);
+    return res.json();
   }
 
-  async submitMission(mission: Mission): Promise<{ mission_id: string }> {
-    const response = await fetch(`${this.baseUrl}/missions`, {
+  // Alias for backward compatibility
+  async checkHealth() {
+    return this.health();
+  }
+
+  // System Telemetry
+  async getTelemetry(): Promise<Telemetry> {
+    const res = await fetch(`${this.baseUrl}/system/telemetry`);
+    if (!res.ok) throw new Error(`Telemetry failed: ${res.status}`);
+    return res.json();
+  }
+
+  // Submit Mission
+  async submitMission(mission: string, context?: Record<string, unknown>): Promise<MissionResponse> {
+    const res = await fetch(`${this.baseUrl}/missions`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(mission),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mission, context }),
     });
-    if (!response.ok) {
-      throw new Error("Failed to submit mission");
-    }
-    return response.json();
+    if (!res.ok) throw new Error(`Mission failed: ${res.status}`);
+    return res.json();
   }
 
-  async searchChronicle(query: string): Promise<ChronicleEntry[]> {
-    const response = await fetch(
-      `${this.baseUrl}/chronicle/search?q=${encodeURIComponent(query)}`
-    );
-    if (!response.ok) {
-      throw new Error("Failed to search chronicle");
-    }
-    return response.json();
+  // Chronicle Search
+  async searchChronicle(query: string): Promise<{ query: string; count: number; results: ChronicleCase[] }> {
+    const res = await fetch(`${this.baseUrl}/chronicle/search?q=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error(`Chronicle search failed: ${res.status}`);
+    return res.json();
   }
 
-  connectWebSocket(onEvent: (event: DeliberationEvent) => void): () => void {
+  // Get Case by ID
+  async getCase(caseId: string): Promise<ChronicleCase> {
+    const res = await fetch(`${this.baseUrl}/chronicle/case/${encodeURIComponent(caseId)}`);
+    if (!res.ok) throw new Error(`Case not found: ${res.status}`);
+    return res.json();
+  }
+
+  // Get Appeals for Case
+  async getCaseAppeals(caseId: string): Promise<{ case_id: string; appeal_count: number; appeals: ChronicleCase[] }> {
+    const res = await fetch(`${this.baseUrl}/chronicle/case/${encodeURIComponent(caseId)}/appeals`);
+    if (!res.ok) throw new Error(`Appeals fetch failed: ${res.status}`);
+    return res.json();
+  }
+
+  // Submit Appeal
+  async submitAppeal(request: AppealRequest): Promise<AppealResponse> {
+    const res = await fetch(`${this.baseUrl}/appeals`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: "Unknown error" }));
+      throw new Error(error.detail || `Appeal failed: ${res.status}`);
+    }
+    return res.json();
+  }
+
+  // WebSocket Connection to Senate
+  createSenateConnection(
+    onMessage: (msg: WSMessage) => void,
+    onOpen?: () => void,
+    onClose?: () => void,
+    onError?: (error: Event) => void
+  ): WebSocket {
     const wsUrl = this.baseUrl.replace(/^http/, "ws") + "/ws/senate";
-    this.ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(wsUrl);
 
-    this.ws.onmessage = (event) => {
+    ws.onopen = () => onOpen?.();
+    ws.onclose = () => onClose?.();
+    ws.onerror = (e) => onError?.(e);
+    
+    ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        onEvent(data);
+        const msg: WSMessage = JSON.parse(event.data);
+        onMessage(msg);
       } catch (e) {
         console.error("Failed to parse WebSocket message:", e);
       }
     };
 
-    this.ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
+    return ws;
+  }
 
-    // Return cleanup function
-    return () => {
-      if (this.ws) {
-        this.ws.close();
-        this.ws = null;
+  // Legacy method for backward compatibility
+  connectWebSocket(onEvent: (event: WSLogMessage) => void): () => void {
+    const ws = this.createSenateConnection(
+      (msg) => {
+        if (msg.type === "log") {
+          onEvent(msg);
+        }
       }
-    };
+    );
+    return () => ws.close();
   }
 }
 
 // Export singleton instance
 export const nestAPI = new NestAPIClient();
+export const api = nestAPI;
+export { NestAPIClient };
+export default nestAPI;
+
+

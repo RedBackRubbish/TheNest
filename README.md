@@ -83,15 +83,30 @@ if hydra_found_exploit and not onyx_acknowledged_risk:
 
 ---
 
-## 🖥️ Frontend: Aerospace Terminal UI
+## 🖥️ Frontend: Aerospace Mission Control
 
-The frontend features an enterprise-grade **Technical/Aerospace** aesthetic:
+The frontend features an enterprise-grade **Aerospace Mission Control** aesthetic built with **Next.js 15, React 19, and Tailwind v4**:
 
+### Visual Design
+- **CRT scanline effects** with phosphor glow
 - **20px grid background** with monochrome palette
-- **System Telemetry Bar** — Live CPU, RAM, latency, governance mode
-- **Agent Status Nodes** — ONYX/IGNIS/HYDRA with pulse animations
-- **Terminal Log** — Color-coded streaming output
-- **Command Interface** — Floating terminal-style input
+- **Constitutional seals** and security badges
+- **Keyboard shortcuts** (⌘1-4 for navigation)
+
+### Core Components
+| Component | Purpose |
+|-----------|---------|
+| **Sidebar** | Navigation with agent status indicators (ONYX/IGNIS/HYDRA) |
+| **SenateFlow** | Real-time visualization of ARBITER→FORGER→ADVERSARY flow |
+| **Constitution** | Live articles display with classification badges |
+| **Chronicle** | Case law archive with search and appeal submission |
+| **CommandPanel** | Terminal interface with Article 50 toggle |
+| **Settings** | Diagnostics, telemetry, kernel internals |
+
+### Real-time Features
+- **WebSocket Live Wire** — Streaming Senate deliberation
+- **Agent pulse animations** — Visual status for each agent
+- **Telemetry polling** — CPU, RAM, latency monitoring
 
 ---
 
@@ -104,6 +119,10 @@ The frontend features an enterprise-grade **Technical/Aerospace** aesthetic:
 | `/health` | GET | System health check |
 | `/system/telemetry` | GET | Live CPU, RAM, uptime stats |
 | `/mission` | POST | Submit mission for Senate deliberation |
+| `/chronicle/search` | GET | Search case law archive |
+| `/chronicle/case/{id}` | GET | Retrieve specific case |
+| `/chronicle/case/{id}/appeals` | GET | Get appeals for a case |
+| `/chronicle/case/{id}/appeal` | POST | Submit appeal (Keeper only) |
 
 ### WebSocket: Live Wire
 
@@ -173,22 +192,19 @@ ollama serve
 
 ## 🧪 Testing
 
-### Constitutional Regression Tests
+### Full Test Suite: 203 Tests
 
-**109 tests** lock down the kernel's security invariants:
+The Nest maintains **constitutional-grade** test coverage across both backend and frontend:
 
 ```bash
-# Run all tests
-python -m pytest tests/ -v
+# Backend: Constitutional Regression Tests (109 tests)
+python3 -m pytest tests/ -v
 
-# Run constitutional regression tests only
-python -m pytest tests/test_constitutional_regression.py -v
-
-# Run Hydra Binding tests only
-python -m pytest tests/test_hydra_binding.py -v
+# Frontend: Component & API Tests (94 tests)
+cd frontend && npm run test:run
 ```
 
-### Test Coverage
+### Backend Test Coverage (109 tests)
 
 | Test Suite | Tests | Invariant Protected |
 |------------|-------|---------------------|
@@ -198,6 +214,18 @@ python -m pytest tests/test_hydra_binding.py -v
 | `test_appeal_system.py` | 11 | Appeal syscall |
 | `test_senate_nodes.py` | 9 | Senate state machine |
 | Others | 14 | API, Elder, Brain routing |
+
+### Frontend Test Coverage (94 tests)
+
+| Test Suite | Tests | Coverage |
+|------------|-------|----------|
+| `api.test.ts` | 19 | API client, type validation |
+| `sidebar.test.tsx` | 9 | Navigation, shortcuts, agent status |
+| `senate-flow.test.tsx` | 11 | Agent visualization, state machine |
+| `constitution.test.tsx` | 12 | Articles, classifications, invariants |
+| `chronicle.test.tsx` | 11 | Case archive, search, appeals |
+| `settings.test.tsx` | 18 | Diagnostics, telemetry, agents |
+| `command-panel.test.tsx` | 14 | Terminal, Article 50, sessions |
 
 ---
 
