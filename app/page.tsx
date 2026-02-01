@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import type React from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Shield, Flame, GitBranch, Cpu, Database, Compass, 
