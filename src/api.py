@@ -6,6 +6,7 @@ import dataclasses
 import json
 import os
 import hashlib
+from datetime import datetime
 import redis.asyncio as redis
 from contextlib import asynccontextmanager
 
@@ -201,33 +202,50 @@ async def websocket_senate(websocket: WebSocket):
                  continue
 
             logger.info(f"WS received mission: {mission}")
-            await websocket.send_json({"status": "RECEIVED", "message": "Mission accepted by Senate Floor."})
+            await websocket.send_json({
+                "phase": "INIT",
+                "agent": "SYSTEM",
+                "message": "Mission accepted by Senate Floor.",
+                "timestamp": datetime.now().isoformat()
+            })
 
             async def notify_client(event_type: str, state: Dict[str, Any]):
-                # Serialize state lightly to prevent overload
-                serialized_votes = []
-                for v in state.get('votes', []):
-                    # Convert Enum to string if needed
-                    vote_val = v.get('vote')
-                    if hasattr(vote_val, 'value'):
-                        vote_val = vote_val.value
-                    serialized_votes.append(vote_val)
-
-                payload = {
-                    "event": event_type,
-                    "votes": serialized_votes,
-                    "verdict": serialize_verdict(state.get('verdict')),
-                    "artifact_signature": state.get('artifact').signature if state.get('artifact') else None
+                # Map internal events to API phases
+                phase_map = {
+                    "SENATE_CONVENING": "CONVENING",
+                    "IGNIS_FORGE_COMPLETE": "PROPOSAL",
+                    "MISSION_APPROVED": "VERDICT",
+                    "MISSION_REFUSED": "VERDICT"
                 }
                 
-                # Enrich playload based on event
-                if event_type == "IGNIS_FORGE_COMPLETE" and state.get('artifact'):
-                     payload["intermediate_representation"] = state['artifact'].intermediate_representation
+                # Determine Agent & Message
+                agent_id = "SYSTEM"
+                msg_text = f"Event: {event_type}"
                 
-                if event_type == "PERMISSION_DENIED" or event_type == "MISSION_REFUSED":
-                     if isinstance(state.get('verdict'), NullVerdictState):
-                         payload["reason"] = state['verdict'].context_summary
+                if event_type == "SENATE_CONVENING":
+                    agent_id = "ONYX"
+                    msg_text = f"Convening Senate for: {state.get('mission', 'Unknown Mission')}"
+                elif event_type == "IGNIS_FORGE_COMPLETE":
+                    agent_id = "IGNIS"
+                    msg_text = "Generated solution proposal."
+                elif event_type == "MISSION_APPROVED":
+                    agent_id = "ONYX"
+                    msg_text = "PASSED. Artifact Authorized."
+                elif event_type == "MISSION_REFUSED":
+                    agent_id = "HYDRA"
+                    msg_text = "FAILED. Governance Rejected."
 
+                payload = {
+                    "phase": phase_map.get(event_type, "PROCESSING"),
+                    "agent": agent_id,
+                    "message": msg_text,
+                    "timestamp": datetime.now().isoformat(),
+                    # keep extra data for specialized clients if needed
+                    "internal_event": event_type,
+                    "verdict": serialize_verdict(state.get('verdict')),
+                    "artifact_signature": state.get('artifact').signature if state.get('artifact') and hasattr(state.get('artifact'), 'signature') else None
+                }
+                
                 await websocket.send_json(payload)
 
             # Execution

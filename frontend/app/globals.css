@@ -1,44 +1,81 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: oklch(0.12 0.01 260);
-  --color-foreground: oklch(0.93 0.02 90);
-  --color-card: oklch(0.14 0.01 260);
-  --color-card-foreground: oklch(0.93 0.02 90);
-  --color-primary: oklch(0.78 0.12 75);
-  --color-primary-foreground: oklch(0.15 0.01 260);
-  --color-secondary: oklch(0.22 0.01 260);
-  --color-secondary-foreground: oklch(0.93 0.02 90);
-  --color-muted: oklch(0.22 0.01 260);
-  --color-muted-foreground: oklch(0.65 0.02 90);
-  --color-accent: oklch(0.22 0.01 260);
-  --color-accent-foreground: oklch(0.93 0.02 90);
-  --color-destructive: oklch(0.65 0.2 25);
+  /* Dark Mode Palette - Rich, Deep, Sophisticated */
+  --color-background: oklch(0.09 0.015 270);
+  --color-foreground: oklch(0.95 0.02 90);
+  --color-card: oklch(0.11 0.015 270);
+  --color-card-foreground: oklch(0.95 0.02 90);
+  --color-primary: oklch(0.78 0.15 75);
+  --color-primary-foreground: oklch(0.12 0.01 270);
+  --color-secondary: oklch(0.16 0.015 270);
+  --color-secondary-foreground: oklch(0.95 0.02 90);
+  --color-muted: oklch(0.18 0.01 270);
+  --color-muted-foreground: oklch(0.55 0.02 90);
+  --color-accent: oklch(0.18 0.015 270);
+  --color-accent-foreground: oklch(0.95 0.02 90);
+  --color-destructive: oklch(0.6 0.22 25);
   --color-destructive-foreground: oklch(0.98 0.01 90);
-  --color-border: oklch(0.25 0.01 260);
-  --color-input: oklch(0.25 0.01 260);
-  --color-ring: oklch(0.78 0.12 75);
+  --color-border: oklch(0.22 0.015 270);
+  --color-input: oklch(0.22 0.015 270);
+  --color-ring: oklch(0.78 0.15 75);
   
-  --color-onyx: oklch(0.65 0.25 300);
-  --color-ignis: oklch(0.72 0.2 50);
-  --color-hydra: oklch(0.7 0.2 145);
-  --color-amber: oklch(0.78 0.12 75);
+  /* Agent Colors - Vibrant, Glowing */
+  --color-onyx: oklch(0.7 0.28 300);
+  --color-ignis: oklch(0.75 0.22 45);
+  --color-hydra: oklch(0.72 0.22 145);
+  --color-amber: oklch(0.8 0.16 75);
   
-  --radius: 0.625rem;
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --radius: 0.75rem;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Monaco", monospace;
 }
 
+/* Base Styles */
 * {
   border-color: var(--color-border);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* Selection */
+::selection {
+  background: oklch(0.78 0.15 75 / 0.3);
+  color: var(--color-foreground);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: oklch(1 0 0 / 0.02);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 0.15);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(1 0 0 / 0.25);
+}
+
+/* Animations */
 @keyframes pulse-glow {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
@@ -49,6 +86,38 @@ body {
   100% { stroke-dashoffset: 0; }
 }
 
+@keyframes aurora {
+  0% { background-position: 50% 50%, 50% 50%; }
+  50% { background-position: 60% 50%, 55% 50%; }
+  100% { background-position: 50% 50%, 50% 50%; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes moving-border {
+  0% { stroke-dashoffset: var(--path-length); }
+  50% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: calc(var(--path-length) * -1); }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
@@ -57,25 +126,171 @@ body {
   animation: flow 1s linear infinite;
 }
 
+.animate-aurora {
+  animation: aurora 15s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+.animate-moving-border {
+  animation: moving-border var(--duration, 4000ms) linear infinite;
+}
+
+.animate-gradient {
+  animation: gradient-shift 3s ease infinite;
+  background-size: 200% 200%;
+}
+
+/* Glass Panel Effect */
 .glass-panel {
-  background: oklch(0.12 0.01 260 / 0.8);
-  backdrop-filter: blur(16px);
+  background: oklch(0.1 0.015 270 / 0.7);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
   border: 1px solid oklch(1 0 0 / 0.08);
 }
 
+.glass-panel-light {
+  background: oklch(1 0 0 / 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid oklch(1 0 0 / 0.06);
+}
+
+/* Terminal Glow Effect */
 .terminal-glow {
-  text-shadow: 0 0 8px currentColor;
+  text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-amber), var(--color-ignis), var(--color-onyx));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-::-webkit-scrollbar-track {
-  background: oklch(1 0 0 / 0.02);
+/* Glow Effects */
+.glow-amber {
+  box-shadow: 0 0 20px oklch(0.78 0.15 75 / 0.4);
 }
 
-::-webkit-scrollbar-thumb {
-  background: oklch(1 0 0 / 0.1);
-  border-radius: 3px;
+.glow-onyx {
+  box-shadow: 0 0 20px oklch(0.7 0.28 300 / 0.4);
+}
+
+.glow-ignis {
+  box-shadow: 0 0 20px oklch(0.75 0.22 45 / 0.4);
+}
+
+.glow-hydra {
+  box-shadow: 0 0 20px oklch(0.72 0.22 145 / 0.4);
+}
+
+/* Dot Grid Background */
+.bg-dot-pattern {
+  background-image: radial-gradient(oklch(1 0 0 / 0.15) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Line Grid Background */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(to right, oklch(1 0 0 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Noise Texture Overlay */
+.noise-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+}
+
+/* Hover Effects */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px -10px oklch(0 0 0 / 0.3);
+}
+
+/* Focus States */
+input:focus,
+textarea:focus,
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px oklch(0.78 0.15 75 / 0.5);
+}
+
+/* Button Base */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+/* Card Hover Effect */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  border-color: oklch(0.78 0.15 75 / 0.3);
+  box-shadow: 
+    0 0 0 1px oklch(0.78 0.15 75 / 0.1),
+    0 10px 40px -10px oklch(0 0 0 / 0.4);
+}
+
+/* Syntax Highlighting Base Colors */
+.text-onyx { color: var(--color-onyx); }
+.text-ignis { color: var(--color-ignis); }
+.text-hydra { color: var(--color-hydra); }
+.text-amber { color: var(--color-amber); }
+.bg-onyx { background-color: var(--color-onyx); }
+.bg-ignis { background-color: var(--color-ignis); }
+.bg-hydra { background-color: var(--color-hydra); }
+.bg-amber { background-color: var(--color-amber); }
+
+/* Border Colors */
+.border-onyx { border-color: var(--color-onyx); }
+.border-ignis { border-color: var(--color-ignis); }
+.border-hydra { border-color: var(--color-hydra); }
+.border-amber { border-color: var(--color-amber); }
+
+/* Transition Utilities */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
