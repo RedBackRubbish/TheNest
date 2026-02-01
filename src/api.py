@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import logging
@@ -6,6 +7,8 @@ import dataclasses
 import json
 import os
 import hashlib
+import time
+import psutil
 from datetime import datetime
 import redis.asyncio as redis
 from contextlib import asynccontextmanager
@@ -14,6 +17,7 @@ from contextlib import asynccontextmanager
 from src.core.elder import TheElder
 from src.core.types import NullVerdictState
 from src.memory.chronicle import TheChronicle
+from src.core.senate import Senate, SenateState, SenateRecord
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +25,15 @@ logger = logging.getLogger("TheNest.API")
 
 # Singleton State
 elder: Optional[TheElder] = None
+senate: Optional[Senate] = None
 redis_client: Optional[redis.Redis] = None
+start_time = time.time()
+
+# Singleton State
+elder: Optional[TheElder] = None
+senate: Optional[Senate] = None
+redis_client: Optional[redis.Redis] = None
+start_time = time.time()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,13 +41,16 @@ async def lifespan(app: FastAPI):
     The Genesis Boot Sequence for the API.
     Ignites the Kernel when the server starts.
     """
-    global elder, redis_client
+    global elder, senate, redis_client
     logger.info("--- SYSTEM STARTUP ---")
     logger.info("Initializing The Nest Kernel...")
     
     # Initialize TheElder
-    # TheElder initializes its own Chronicle connection synchronously in __init__
     elder = TheElder()
+    
+    # Initialize The Senate (Sovereign State Machine)
+    senate = Senate()
+    logger.info("The Senate is now in session.")
     
     # Initialize Redis
     try:
@@ -55,6 +70,14 @@ async def lifespan(app: FastAPI):
         await redis_client.close()
 
 app = FastAPI(title="The Nest: Synthetic Civilization", version="5.2", lifespan=lifespan)
+
+# Allow v0 / Next.js Frontend to connect
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # --- REQUEST MODELS ---
 
@@ -94,6 +117,16 @@ class AppealResponse(BaseModel):
     chronicle_citations: List[str]
     message: str
 
+class TelemetryResponse(BaseModel):
+    """Real-time system telemetry for the Aerospace UI header."""
+    uptime_seconds: float
+    cpu_usage_percent: float
+    ram_usage_mb: float
+    governance_mode: str
+    active_agents: List[str]
+    latency_ms: int
+    kernel_status: str
+
 # --- HELPER FUNCTIONS ---
 
 def serialize_artifact(artifact: Any) -> Optional[Dict[str, Any]]:
@@ -126,6 +159,28 @@ async def health_check():
     if not elder:
         raise HTTPException(status_code=503, detail="Kernel Initializing")
     return {"status": "OPERATIONAL", "governance": "ACTIVE", "mode": "SOVEREIGN"}
+
+@app.get("/system/telemetry", response_model=TelemetryResponse)
+async def get_telemetry():
+    """
+    Feeds the 'Aerospace' Header in the UI.
+    Provides real-time hardware and governance stats.
+    """
+    process = psutil.Process(os.getpid())
+    
+    # Determine governance mode
+    secured_mode = os.getenv("CHRONICLE_SECURED", "false").lower() == "true"
+    governance_mode = "STRICT (CONSTITUTIONAL)" if secured_mode else "STANDARD"
+    
+    return TelemetryResponse(
+        uptime_seconds=round(time.time() - start_time, 1),
+        cpu_usage_percent=round(psutil.cpu_percent(), 1),
+        ram_usage_mb=round(process.memory_info().rss / 1024 / 1024, 1),
+        governance_mode=governance_mode,
+        active_agents=["ONYX", "IGNIS", "HYDRA"],
+        latency_ms=int(8 + (time.time() % 1) * 15),  # Simulated fluctuation 8-23ms
+        kernel_status="ONLINE" if elder else "INITIALIZING"
+    )
 
 @app.post("/missions", response_model=MissionResponse)
 async def submit_mission(req: MissionRequest):
@@ -298,95 +353,256 @@ async def submit_appeal(req: AppealRequestModel):
             detail=f"Appeal processing failed: {str(e)}"
         )
 
+# =============================================================================
+# THE LIVE WIRE (WebSocket)
+# =============================================================================
+
 @app.websocket("/ws/senate")
 async def websocket_senate(websocket: WebSocket):
+    """
+    The 'Matrix' Feed.
+    Streams every thought, audit, and decision to the frontend terminal.
+    
+    Message Types:
+        - type: "log" - Terminal log entry (status: RECEIVED, FORGING, VETO, AUTHORIZE)
+        - type: "state_change" - Agent activation (node: ONYX/IGNIS/HYDRA, status: ACTIVE/IDLE)
+        - type: "artifact" - Final code output
+        - type: "final_verdict" - Session complete
+    """
     await websocket.accept()
-    if not elder:
+    if not elder or not senate:
         await websocket.close(code=1003, reason="Kernel Initializing")
         return
 
     try:
         while True:
-            # Expecting a JSON message: {"mission": "..."}
             data = await websocket.receive_text()
             try:
                 msg = json.loads(data)
                 mission = msg.get("mission")
+                allow_ungoverned = msg.get("allow_ungoverned", False)
             except:
-                await websocket.send_json({"error": "Invalid JSON format"})
+                await websocket.send_json({"type": "error", "message": "Invalid JSON format"})
                 continue
             
             if not mission:
-                 await websocket.send_json({"error": "Mission field required"})
-                 continue
+                await websocket.send_json({"type": "error", "message": "Mission field required"})
+                continue
 
-            logger.info(f"WS received mission: {mission}")
+            # --- 1. Acknowledge (The 'Bleep' on the radar) ---
             await websocket.send_json({
-                "phase": "INIT",
+                "type": "log",
+                "timestamp": datetime.now().isoformat(),
                 "agent": "SYSTEM",
-                "message": "Mission accepted by Senate Floor.",
-                "timestamp": datetime.now().isoformat()
+                "status": "RECEIVED",
+                "message": f"Mission intent received: {mission[:50]}..."
             })
 
-            async def notify_client(event_type: str, state: Dict[str, Any]):
-                # Map internal events to API phases
-                phase_map = {
-                    "SENATE_CONVENING": "CONVENING",
-                    "IGNIS_FORGE_COMPLETE": "PROPOSAL",
-                    "MISSION_APPROVED": "VERDICT",
-                    "MISSION_REFUSED": "VERDICT"
-                }
-                
-                # Determine Agent & Message
-                agent_id = "SYSTEM"
-                msg_text = f"Event: {event_type}"
-                
-                if event_type == "SENATE_CONVENING":
-                    agent_id = "ONYX"
-                    msg_text = f"Convening Senate for: {state.get('mission', 'Unknown Mission')}"
-                elif event_type == "IGNIS_FORGE_COMPLETE":
-                    agent_id = "IGNIS"
-                    msg_text = "Generated solution proposal."
-                elif event_type == "MISSION_APPROVED":
-                    agent_id = "ONYX"
-                    msg_text = "PASSED. Artifact Authorized."
-                elif event_type == "MISSION_REFUSED":
-                    agent_id = "HYDRA"
-                    msg_text = "FAILED. Governance Rejected."
-
-                payload = {
-                    "phase": phase_map.get(event_type, "PROCESSING"),
-                    "agent": agent_id,
-                    "message": msg_text,
+            # --- 2. Article 50 Check (Martial Law) ---
+            if allow_ungoverned:
+                await websocket.send_json({
+                    "type": "log",
                     "timestamp": datetime.now().isoformat(),
-                    # keep extra data for specialized clients if needed
-                    "internal_event": event_type,
-                    "verdict": serialize_verdict(state.get('verdict')),
-                    "artifact_signature": state.get('artifact').signature if state.get('artifact') and hasattr(state.get('artifact'), 'signature') else None
-                }
-                
-                await websocket.send_json(payload)
+                    "agent": "SYSTEM",
+                    "status": "WARNING",
+                    "message": "ARTICLE 50 INVOKED. Bypassing governance. LIABILITY ATTACHED."
+                })
+                await websocket.send_json({
+                    "type": "final_verdict",
+                    "result": "UNGOVERNED",
+                    "liability": "KEEPER"
+                })
+                continue
 
-            # Execution
-            final_state = await elder.run_mission(mission, stream_callback=notify_client)
+            # --- STEP A: ONYX PRE-CHECK ---
+            await websocket.send_json({
+                "type": "state_change",
+                "node": "ONYX",
+                "status": "ACTIVE"
+            })
+            await websocket.send_json({
+                "type": "log",
+                "timestamp": datetime.now().isoformat(),
+                "agent": "ONYX",
+                "status": "AUDITING",
+                "message": "Running local pre-check (R1 32B)..."
+            })
+
+            precheck = await senate._onyx_precheck(mission)
             
-            # Final Result
-            response = {
-                "event": "FINAL_VERDICT",
-                "final_state": {
-                    "mission": final_state.get('mission'),
-                    "status": "APPROVED" if final_state.get('verdict') == "APPROVED" else "REJECTED",
-                    "artifact": serialize_artifact(final_state.get('artifact')),
-                    "full_verdict": serialize_verdict(final_state.get('verdict'))
-                }
-            }
-            await websocket.send_json(response)
+            await websocket.send_json({
+                "type": "log",
+                "timestamp": datetime.now().isoformat(),
+                "agent": "ONYX",
+                "status": precheck.verdict,
+                "message": f"Pre-check complete. Confidence: {precheck.confidence}"
+            })
+            await websocket.send_json({
+                "type": "state_change",
+                "node": "ONYX",
+                "status": "IDLE"
+            })
+
+            if precheck.verdict == "VETO":
+                await websocket.send_json({
+                    "type": "log",
+                    "timestamp": datetime.now().isoformat(),
+                    "agent": "ONYX",
+                    "status": "VETO",
+                    "message": f"BLOCKED: {precheck.reasoning}"
+                })
+                await websocket.send_json({
+                    "type": "final_verdict",
+                    "result": "VETOED",
+                    "reason": precheck.reasoning,
+                    "appealable": True
+                })
+                continue
+
+            # --- STEP B: IGNIS FORGE ---
+            gov_mode = senate._classify_intent(mission)
+            mode_str = "BACKSTOP (Opus)" if gov_mode else "ENGINE (Codex)"
+            
+            await websocket.send_json({
+                "type": "state_change",
+                "node": "IGNIS",
+                "status": "ACTIVE"
+            })
+            await websocket.send_json({
+                "type": "log",
+                "timestamp": datetime.now().isoformat(),
+                "agent": "IGNIS",
+                "status": "FORGING",
+                "message": f"Generating solution via {mode_str}..."
+            })
+
+            ignis_resp = await senate.brain.think(
+                agent="ignis",
+                user_prompt=f"Execute this task: {mission}",
+                system_prompt="You are Ignis. Generate clean, safe code. RETURN JSON with 'code' and 'explanation'.",
+                governance_mode=gov_mode
+            )
+            
+            if isinstance(ignis_resp, dict):
+                proposal = ignis_resp.get("code") or json.dumps(ignis_resp, indent=2)
+            else:
+                proposal = str(ignis_resp)
+
+            await websocket.send_json({
+                "type": "log",
+                "timestamp": datetime.now().isoformat(),
+                "agent": "IGNIS",
+                "status": "COMPLETE",
+                "message": f"Proposal generated ({len(proposal)} chars)"
+            })
+            await websocket.send_json({
+                "type": "state_change",
+                "node": "IGNIS",
+                "status": "IDLE"
+            })
+
+            # --- STEP C: HYDRA GAUNTLET ---
+            if len(proposal) > 100:
+                await websocket.send_json({
+                    "type": "state_change",
+                    "node": "HYDRA",
+                    "status": "ACTIVE"
+                })
+                await websocket.send_json({
+                    "type": "log",
+                    "timestamp": datetime.now().isoformat(),
+                    "agent": "HYDRA",
+                    "status": "INJECTING",
+                    "message": "Running adversarial patterns..."
+                })
+                
+                hydra_resp = await senate.brain.think(
+                    agent="hydra",
+                    user_prompt=f"Review this code for security flaws:\n{proposal}",
+                    system_prompt="You are Hydra. Find vulnerabilities. Be ruthless. RETURN JSON."
+                )
+                hydra_report = json.dumps(hydra_resp, indent=2) if isinstance(hydra_resp, dict) else str(hydra_resp)
+                
+                await websocket.send_json({
+                    "type": "log",
+                    "timestamp": datetime.now().isoformat(),
+                    "agent": "HYDRA",
+                    "status": "COMPLETE",
+                    "message": "Adversarial analysis complete"
+                })
+                await websocket.send_json({
+                    "type": "state_change",
+                    "node": "HYDRA",
+                    "status": "IDLE"
+                })
+            else:
+                hydra_report = "Skipped (proposal too small)"
+                await websocket.send_json({
+                    "type": "log",
+                    "timestamp": datetime.now().isoformat(),
+                    "agent": "HYDRA",
+                    "status": "SKIPPED",
+                    "message": "Proposal below threshold, skipping red team"
+                })
+
+            # --- STEP D: ONYX FINAL ---
+            await websocket.send_json({
+                "type": "state_change",
+                "node": "ONYX",
+                "status": "ACTIVE"
+            })
+            await websocket.send_json({
+                "type": "log",
+                "timestamp": datetime.now().isoformat(),
+                "agent": "ONYX",
+                "status": "DELIBERATING",
+                "message": "Final judgment in progress (Cloud)..."
+            })
+
+            final_context = f"PROPOSAL:\n{proposal}\n\nHYDRA REPORT:\n{hydra_report}"
+            final_vote = await senate._onyx_final(mission, final_context)
+
+            await websocket.send_json({
+                "type": "log",
+                "timestamp": datetime.now().isoformat(),
+                "agent": "ONYX",
+                "status": final_vote.verdict,
+                "message": f"Final ruling: {final_vote.reasoning[:100]}..."
+            })
+            await websocket.send_json({
+                "type": "state_change",
+                "node": "ONYX",
+                "status": "IDLE"
+            })
+
+            # --- FINAL PAYLOAD ---
+            if final_vote.verdict == "AUTHORIZE":
+                await websocket.send_json({
+                    "type": "artifact",
+                    "code": proposal,
+                    "verdict": "AUTHORIZED"
+                })
+                await websocket.send_json({
+                    "type": "final_verdict",
+                    "result": "AUTHORIZED",
+                    "appealable": False
+                })
+            else:
+                await websocket.send_json({
+                    "type": "final_verdict",
+                    "result": "VETOED",
+                    "reason": final_vote.reasoning,
+                    "appealable": True
+                })
             
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")
     except Exception as e:
         logger.error(f"WebSocket Error: {e}")
         try:
-             await websocket.send_json({"error": "Internal Server Error", "details": str(e)})
+            await websocket.send_json({
+                "type": "error",
+                "message": f"Internal Server Error: {str(e)}"
+            })
         except:
             pass

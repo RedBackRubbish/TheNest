@@ -4,6 +4,7 @@ openai
 redis
 websockets
 pydantic
+psutil
 pytest
 pytest-asyncio
 httpx

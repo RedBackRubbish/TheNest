@@ -7,44 +7,53 @@ export function Settings() {
   const [securedMode, setSecuredMode] = useState(false);
 
   return (
-    <div className="h-full overflow-auto p-4">
+    <div className="h-full overflow-auto p-6">
       <div className="max-w-2xl mx-auto space-y-6">
+        {/* Header */}
         <div>
-          <h1 className="text-lg font-medium text-[#e4e4e7]">Settings</h1>
-          <p className="text-sm text-[#52525b]">System configuration</p>
+          <span className="chassis-label text-zinc-600">SYSTEM CONFIGURATION</span>
+          <p className="text-xs text-zinc-700 font-mono mt-1">Runtime Parameters &amp; Security Controls</p>
         </div>
 
         <div className="space-y-4">
-          <div className="p-4 bg-[#111113] border border-[#1c1c1f] rounded space-y-4">
-            <h2 className="text-sm font-medium text-[#e4e4e7]">Connection</h2>
+          {/* Connection Panel */}
+          <div className="p-4 bg-white/[0.02] border border-white/10 rounded space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="chassis-label text-zinc-500">CONNECTION</span>
+              <div className="flex-1 h-px bg-white/5" />
+            </div>
             
             <div className="space-y-2">
-              <label className="text-xs text-[#52525b]">API Endpoint</label>
+              <label className="chassis-label text-zinc-600">API ENDPOINT</label>
               <input
                 type="text"
                 value={apiEndpoint}
                 onChange={(e) => setApiEndpoint(e.target.value)}
-                className="w-full px-3 py-2 bg-[#09090b] border border-[#1c1c1f] rounded text-sm text-[#e4e4e7] font-mono focus:outline-none focus:border-[#3b82f6]"
+                className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded font-mono text-xs text-zinc-300 focus:outline-none focus:border-white/20"
               />
             </div>
           </div>
 
-          <div className="p-4 bg-[#111113] border border-[#1c1c1f] rounded space-y-4">
-            <h2 className="text-sm font-medium text-[#e4e4e7]">Security</h2>
+          {/* Security Panel */}
+          <div className="p-4 bg-white/[0.02] border border-white/10 rounded space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="chassis-label text-zinc-500">SECURITY</span>
+              <div className="flex-1 h-px bg-white/5" />
+            </div>
             
-            <label className="flex items-center justify-between cursor-pointer">
+            <label className="flex items-center justify-between cursor-pointer group">
               <div>
-                <p className="text-sm text-[#e4e4e7]">Secured Mode</p>
-                <p className="text-xs text-[#52525b]">Require explicit write handles for Chronicle</p>
+                <p className="font-mono text-xs text-zinc-300 uppercase tracking-wide">Secured Mode</p>
+                <p className="text-[10px] text-zinc-600 font-mono mt-0.5">Require explicit write handles for Chronicle</p>
               </div>
               <button
                 onClick={() => setSecuredMode(!securedMode)}
-                className={`relative w-10 h-5 rounded-full transition-colors ${
-                  securedMode ? "bg-[#3b82f6]" : "bg-[#1c1c1f]"
+                className={`relative w-10 h-5 rounded transition-colors ${
+                  securedMode ? "bg-blue-600/50 border border-blue-500/50" : "bg-white/5 border border-white/10"
                 }`}
               >
                 <div
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                  className={`absolute top-0.5 w-4 h-4 rounded bg-zinc-200 transition-transform ${
                     securedMode ? "translate-x-5" : "translate-x-0.5"
                   }`}
                 />
@@ -52,22 +61,44 @@ export function Settings() {
             </label>
           </div>
 
-          <div className="p-4 bg-[#111113] border border-[#1c1c1f] rounded">
-            <h2 className="text-sm font-medium text-[#e4e4e7] mb-3">System Info</h2>
-            <div className="space-y-2 text-xs font-mono">
-              <div className="flex justify-between">
-                <span className="text-[#52525b]">Version</span>
-                <span className="text-[#a1a1aa]">5.2.0</span>
+          {/* System Info Panel */}
+          <div className="p-4 bg-white/[0.02] border border-white/10 rounded">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="chassis-label text-zinc-500">DIAGNOSTICS</span>
+              <div className="flex-1 h-px bg-white/5" />
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <span className="chassis-label text-zinc-700">BUILD</span>
+                <p className="font-mono text-xs text-zinc-400 tabular-nums">5.2.0</p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-[#52525b]">Kernel</span>
-                <span className="text-[#22c55e]">Online</span>
+              <div className="space-y-1">
+                <span className="chassis-label text-zinc-700">KERNEL</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_#22c55e]" />
+                  <p className="font-mono text-xs text-emerald-500/80">ONLINE</p>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-[#52525b]">Chronicle</span>
-                <span className="text-[#a1a1aa]">JSON Fallback</span>
+              <div className="space-y-1">
+                <span className="chassis-label text-zinc-700">STORAGE</span>
+                <p className="font-mono text-xs text-zinc-500">JSON</p>
               </div>
             </div>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="p-4 bg-red-950/10 border border-red-900/20 rounded">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="chassis-label text-red-500/60">DANGER ZONE</span>
+              <div className="flex-1 h-px bg-red-900/20" />
+            </div>
+            <p className="text-[10px] text-zinc-600 font-mono mb-3">
+              Irreversible operations. Proceed with caution.
+            </p>
+            <button className="px-3 py-1.5 bg-red-950/30 border border-red-900/30 rounded font-mono text-[10px] text-red-400/60 uppercase tracking-wider hover:bg-red-950/50 hover:border-red-900/50 transition-colors">
+              Purge Chronicle
+            </button>
           </div>
         </div>
       </div>
