@@ -1,119 +1,95 @@
 "use client";
 
 import { useState } from "react";
-import { Header } from "@/components/header";
-import { SenateGraph } from "@/components/senate-graph";
-import { MissionConsole } from "@/components/mission-console";
-import { StatusPanel } from "@/components/status-panel";
+import { Sidebar } from "@/components/sidebar";
+import { MainStage } from "@/components/main-stage";
+import { GovernanceLog } from "@/components/governance-log";
 
 export default function GovernanceDeck() {
-  const [apiUrl, setApiUrl] = useState("");
-  const [isConfigured, setIsConfigured] = useState(false);
+  const [activeView, setActiveView] = useState("missions");
+  const [isSessionActive, setIsSessionActive] = useState(false);
+
+  const handleViewChange = (view: string) => {
+    setActiveView(view);
+    // Auto-activate session when navigating to missions
+    if (view === "missions") {
+      setIsSessionActive(true);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="flex h-screen bg-zinc-950 overflow-hidden">
+      {/* Sidebar Navigation */}
+      <Sidebar activeView={activeView} onViewChange={handleViewChange} />
 
-      <main className="mx-auto max-w-7xl px-4 py-6">
-        {/* API Configuration Banner */}
-        {!isConfigured && (
-          <div className="mb-6 rounded-lg border border-amber/30 bg-amber/5 p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="font-mono text-sm font-semibold text-amber">
-                  BACKEND CONNECTION
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Enter your FastAPI backend URL to enable live governance
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={apiUrl}
-                  onChange={(e) => setApiUrl(e.target.value)}
-                  placeholder="https://your-api.example.com"
-                  className="h-9 rounded-md border border-border bg-background px-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-                <button
-                  onClick={() => apiUrl && setIsConfigured(true)}
-                  className="h-9 rounded-md bg-primary px-4 font-mono text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-                >
-                  Connect
-                </button>
-              </div>
+      {/* Main Content Area */}
+      <div className="flex flex-1 flex-col min-w-0">
+        {/* Top Header Bar */}
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/[0.08] bg-zinc-950/80 backdrop-blur-xl px-6">
+          <div className="flex items-center gap-4">
+            <h2 className="font-sans text-sm font-medium text-foreground capitalize">
+              {activeView}
+            </h2>
+            <div className="h-4 w-px bg-white/[0.08]" />
+            <span className="font-mono text-xs text-muted-foreground">
+              Protocol v5.2
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {/* Session Toggle */}
+            <button
+              onClick={() => setIsSessionActive(!isSessionActive)}
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-xs transition-all ${
+                isSessionActive
+                  ? "border-hydra/30 bg-hydra/10 text-hydra"
+                  : "border-white/[0.08] bg-white/[0.02] text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  isSessionActive ? "bg-hydra animate-pulse" : "bg-muted"
+                }`}
+              />
+              {isSessionActive ? "SESSION ACTIVE" : "SESSION PAUSED"}
+            </button>
+
+            {/* Dragon Status */}
+            <div className="hidden sm:flex items-center gap-2">
+              <DragonIndicator name="O" color="onyx" />
+              <DragonIndicator name="I" color="ignis" />
+              <DragonIndicator name="H" color="hydra" />
             </div>
           </div>
-        )}
+        </header>
 
-        {/* Page Title */}
-        <div className="mb-6">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono mb-2">
-            <span>THE NEST</span>
-            <span>/</span>
-            <span className="text-foreground">SENATE</span>
-          </div>
-          <h2 className="text-2xl font-semibold text-foreground">
-            Governance Deck
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Real-time visualization of the synthetic civilization decision pipeline
-          </p>
-        </div>
+        {/* Main Stage */}
+        <MainStage
+          activeView={activeView}
+          isSessionActive={isSessionActive}
+          className="flex-1"
+        />
 
-        {/* Main Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column - Main Content */}
-          <div className="lg:col-span-9 space-y-6">
-            {/* Senate Logic Graph */}
-            <SenateGraph />
-
-            {/* Mission Console */}
-            <MissionConsole />
-          </div>
-
-          {/* Right Column - Status Panel */}
-          <div className="lg:col-span-3">
-            <StatusPanel className="sticky top-6" />
-          </div>
-        </div>
-
-        {/* Footer Stats */}
-        <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label="Missions Processed" value="1,247" change="+12%" />
-          <StatCard label="Approval Rate" value="94.2%" change="+2.1%" />
-          <StatCard label="Avg. Deliberation" value="2.3s" change="-0.4s" />
-          <StatCard label="Stop Work Orders" value="73" change="-8" isNegative />
-        </div>
-      </main>
+        {/* Governance Log Terminal */}
+        <GovernanceLog />
+      </div>
     </div>
   );
 }
 
-function StatCard({
-  label,
-  value,
-  change,
-  isNegative = false,
-}: {
-  label: string;
-  value: string;
-  change: string;
-  isNegative?: boolean;
-}) {
+function DragonIndicator({ name, color }: { name: string; color: "onyx" | "ignis" | "hydra" }) {
+  const colorClasses = {
+    onyx: "border-onyx/50 bg-onyx/10 text-onyx",
+    ignis: "border-ignis/50 bg-ignis/10 text-ignis",
+    hydra: "border-hydra/50 bg-hydra/10 text-hydra",
+  };
+
   return (
-    <div className="rounded-lg border border-border bg-card/50 p-4">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <div className="mt-1 flex items-baseline gap-2">
-        <span className="text-2xl font-semibold text-foreground">{value}</span>
-        <span
-          className={`text-xs font-mono ${
-            isNegative ? "text-destructive" : "text-hydra"
-          }`}
-        >
-          {change}
-        </span>
-      </div>
+    <div
+      className={`flex h-7 w-7 items-center justify-center rounded-md border font-mono text-xs font-semibold ${colorClasses[color]}`}
+      title={`${name === "O" ? "Onyx" : name === "I" ? "Ignis" : "Hydra"} - Active`}
+    >
+      {name}
     </div>
   );
 }
