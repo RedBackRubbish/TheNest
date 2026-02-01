@@ -274,3 +274,175 @@ class TheElder:
                 "ARTIFACT QUARANTINED IN src/ungoverned/"
             ]
         }
+
+    # =========================================================================
+    # APPEAL MECHANISM (Due Process)
+    # =========================================================================
+    
+    async def process_appeal(
+        self,
+        case_id: str,
+        expanded_context: Dict[str, Any],
+        constraint_changes: Dict[str, Any],
+        appellant_reason: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Process an appeal for a previously refused case.
+        
+        CONSTITUTIONAL INVARIANTS:
+            - Appeals EXPAND context, never ERASE history
+            - Appeals may NOT bypass Onyx
+            - Each appeal increases liability metadata
+            - All appeals are permanently logged
+            - Requires explicit Chronicle citation during re-evaluation
+        
+        Args:
+            case_id: The case being appealed
+            expanded_context: Additional context to consider
+            constraint_changes: Proposed constraint modifications
+            appellant_reason: Human-readable reason for appeal
+            
+        Returns:
+            AppealOutcome as a dictionary
+            
+        Raises:
+            ValueError: If case not found
+            ChroniclePersistenceError: If appeal persistence fails
+        """
+        from src.memory.appeal_schema import AppealRecord, AppealOutcome
+        
+        # 1. Load original case from Chronicle
+        original = self.chronicle.get_case_by_id(case_id)
+        if not original:
+            raise ValueError(f"Case {case_id} not found in Chronicle")
+        
+        # 2. Calculate appeal depth (how many times appealed)
+        appeal_depth = self.chronicle.get_appeal_count(case_id) + 1
+        liability_multiplier = 1.5 ** appeal_depth
+        
+        print(f"⚖️ APPEAL FILED: {case_id}")
+        print(f"   Appeal Depth: {appeal_depth}")
+        print(f"   Liability Multiplier: {liability_multiplier:.2f}x")
+        
+        # 3. Build expanded mission with APPENDED context
+        # INVARIANT: We append, never overwrite
+        expanded_mission = self._build_appeal_mission(
+            original_question=original.question,
+            original_deliberation=original.deliberation,
+            original_ruling=original.verdict.get("ruling", "UNKNOWN"),
+            expanded_context=expanded_context,
+            constraint_changes=constraint_changes,
+            appellant_reason=appellant_reason
+        )
+        
+        # 4. Cite original case (required for re-evaluation)
+        citation = self.chronicle.cite_precedent(case_id)
+        chronicle_citations = [case_id]
+        
+        # 5. Re-run Senate deliberation (Onyx CANNOT be bypassed)
+        print(f"⚖️ RE-CONVENING SENATE FOR APPEAL...")
+        record: SenateRecord = await self.senate.convene(intent=expanded_mission)
+        
+        # 6. Extract new deliberation and ruling
+        new_deliberation = [v.model_dump() for v in record.votes]
+        
+        if record.state == SenateEnum.AUTHORIZED:
+            new_ruling = "APPROVED"
+        else:
+            new_ruling = "REFUSED"
+        
+        # 7. Determine appeal status
+        original_ruling = original.verdict.get("ruling", "UNKNOWN")
+        if original_ruling == new_ruling:
+            status = "UPHELD"
+            message = f"Appeal denied. Original ruling stands: {original_ruling}"
+        elif new_ruling == "APPROVED":
+            status = "OVERTURNED"
+            message = f"Appeal granted. Case overturned from {original_ruling} to APPROVED."
+        else:
+            status = "MODIFIED"
+            message = f"Appeal resulted in modified ruling: {new_ruling}"
+        
+        # 8. Create appeal record
+        appeal_record = AppealRecord.create(
+            original_case_id=case_id,
+            original_ruling=original_ruling,
+            original_deliberation=original.deliberation,
+            expanded_context=expanded_context,
+            constraint_changes=constraint_changes,
+            appellant_reason=appellant_reason,
+            new_deliberation=new_deliberation,
+            new_ruling=new_ruling,
+            chronicle_citations=chronicle_citations,
+            appeal_depth=appeal_depth
+        )
+        
+        # 9. Persist appeal (MUST succeed before returning)
+        appeal_id = self.chronicle.persist_appeal(
+            appeal=appeal_record,
+            handle=self._chronicle_write_handle
+        )
+        
+        print(f"⚖️ APPEAL {appeal_id}: {status}")
+        
+        # 10. Build outcome
+        outcome = AppealOutcome(
+            appeal_id=appeal_id,
+            original_case_id=case_id,
+            status=status,
+            original_ruling=original_ruling,
+            new_ruling=new_ruling,
+            appeal_depth=appeal_depth,
+            liability_multiplier=liability_multiplier,
+            chronicle_citations=chronicle_citations,
+            message=message
+        )
+        
+        return outcome.to_dict()
+    
+    def _build_appeal_mission(
+        self,
+        original_question: str,
+        original_deliberation: List[Dict],
+        original_ruling: str,
+        expanded_context: Dict[str, Any],
+        constraint_changes: Dict[str, Any],
+        appellant_reason: str
+    ) -> str:
+        """
+        Build an expanded mission for Senate re-evaluation.
+        
+        INVARIANT: Context is APPENDED, never overwritten.
+        The original question, deliberation, and ruling are preserved.
+        """
+        parts = [
+            "=== APPEAL CONTEXT ===",
+            f"Original Question: {original_question}",
+            f"Original Ruling: {original_ruling}",
+            "",
+            "=== ORIGINAL DELIBERATION ===",
+        ]
+        
+        for vote in original_deliberation:
+            agent = vote.get("agent", "UNKNOWN")
+            verdict = vote.get("verdict", "UNKNOWN")
+            reasoning = vote.get("reasoning", "")
+            parts.append(f"  {agent}: {verdict} - {reasoning[:100]}")
+        
+        parts.extend([
+            "",
+            "=== EXPANDED CONTEXT (Appellant Provided) ===",
+            json.dumps(expanded_context, indent=2),
+            "",
+            "=== CONSTRAINT CHANGES (Requested) ===",
+            json.dumps(constraint_changes, indent=2),
+            "",
+            "=== APPELLANT REASON ===",
+            appellant_reason or "(No reason provided)",
+            "",
+            "=== RE-EVALUATION REQUIRED ===",
+            "Please re-evaluate the original question with the expanded context.",
+            f"Original Question: {original_question}"
+        ])
+        
+        return "\n".join(parts)

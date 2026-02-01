@@ -69,6 +69,31 @@ class MissionResponse(BaseModel):
     verdict: Optional[Dict[str, Any]] = None
     message: Optional[str] = None
 
+class AppealRequestModel(BaseModel):
+    """
+    Request to appeal a previous case decision.
+    
+    CONSTITUTIONAL BASIS:
+        Article 12: Right to Appeal
+        Appeals EXPAND context — they never ERASE history.
+    """
+    case_id: str
+    expanded_context: Dict[str, Any] = {}
+    constraint_changes: Dict[str, Any] = {}
+    appellant_reason: str = ""
+
+class AppealResponse(BaseModel):
+    """Response from an appeal request."""
+    appeal_id: str
+    original_case_id: str
+    status: str  # UPHELD, OVERTURNED, MODIFIED
+    original_ruling: str
+    new_ruling: str
+    appeal_depth: int
+    liability_multiplier: float
+    chronicle_citations: List[str]
+    message: str
+
 # --- HELPER FUNCTIONS ---
 
 def serialize_artifact(artifact: Any) -> Optional[Dict[str, Any]]:
@@ -178,6 +203,100 @@ async def search_chronicle(q: str):
     
     results = elder.chronicle.retrieve_precedent(q)
     return {"query": q, "count": len(results), "results": results}
+
+@app.get("/chronicle/case/{case_id}")
+async def get_case(case_id: str):
+    """
+    Retrieve a specific case by ID.
+    """
+    if not elder:
+        raise HTTPException(status_code=503, detail="Kernel Initializing")
+    
+    case = elder.chronicle.get_case_by_id(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
+    
+    return case.to_dict()
+
+@app.get("/chronicle/case/{case_id}/appeals")
+async def get_case_appeals(case_id: str):
+    """
+    Get all appeals for a specific case.
+    """
+    if not elder:
+        raise HTTPException(status_code=503, detail="Kernel Initializing")
+    
+    case = elder.chronicle.get_case_by_id(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
+    
+    appeals = elder.chronicle.get_appeals_for_case(case_id)
+    return {
+        "case_id": case_id,
+        "appeal_count": len(appeals),
+        "appeals": [a.to_dict() for a in appeals]
+    }
+
+
+# =============================================================================
+# APPEAL ENDPOINT (Due Process)
+# =============================================================================
+
+@app.post("/appeals", response_model=AppealResponse)
+async def submit_appeal(req: AppealRequestModel):
+    """
+    Submit an appeal for a previously refused case.
+    
+    CONSTITUTIONAL BASIS:
+        Article 12: Right to Appeal
+        
+    INVARIANTS:
+        - Appeals EXPAND context, never ERASE history
+        - Appeals may NOT bypass Onyx
+        - Each appeal increases liability metadata
+        - All appeals are permanently logged
+        - Requires explicit Chronicle citation during re-evaluation
+        
+    BEHAVIOR:
+        1. Load original SenateRecord from Chronicle
+        2. Append new context (do NOT overwrite)
+        3. Re-run Senate deliberation
+        4. Persist appeal outcome as linked case law
+        
+    LIABILITY ESCALATION:
+        Each appeal increases liability by 1.5x
+        - First appeal: 1.5x
+        - Second appeal: 2.25x
+        - Third appeal: 3.375x
+    """
+    if not elder:
+        raise HTTPException(status_code=503, detail="Kernel Initializing")
+    
+    logger.info(f"APPEAL FILED for case: {req.case_id}")
+    
+    try:
+        outcome = await elder.process_appeal(
+            case_id=req.case_id,
+            expanded_context=req.expanded_context,
+            constraint_changes=req.constraint_changes,
+            appellant_reason=req.appellant_reason
+        )
+        
+        logger.info(f"APPEAL {outcome['appeal_id']}: {outcome['status']}")
+        
+        return AppealResponse(**outcome)
+        
+    except ValueError as e:
+        # Case not found
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Appeal Error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Appeal processing failed: {str(e)}"
+        )
 
 @app.websocket("/ws/senate")
 async def websocket_senate(websocket: WebSocket):

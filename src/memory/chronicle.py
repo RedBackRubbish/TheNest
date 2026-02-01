@@ -20,8 +20,10 @@ import logging
 from typing import List, Dict, Any, Optional, Tuple
 from enum import Enum, auto
 from dataclasses import dataclass
+from datetime import datetime
 
 from src.memory.schema import PrecedentObject, NullVerdictRecord
+from src.memory.appeal_schema import AppealRecord
 
 logger = logging.getLogger("TheNest.Chronicle")
 
@@ -112,6 +114,7 @@ class TheChronicle:
     def __init__(self, persistence_path: str = "chronicle_data.json"):
         self.persistence_path = persistence_path
         self.memory: List[PrecedentObject] = []
+        self.appeals: List[AppealRecord] = []  # Appeal history
         self._load()
         
         # Track if we're in secured mode (explicit handles required)
@@ -163,6 +166,7 @@ class TheChronicle:
     # =========================================================================
 
     def _load(self):
+        # Load main precedent data
         if os.path.exists(self.persistence_path):
             try:
                 with open(self.persistence_path, 'r') as f:
@@ -173,6 +177,18 @@ class TheChronicle:
                 logger.info(f"[CHRONICLE] Loaded {len(self.memory)} cases")
             except Exception as e:
                 logger.error(f"[CHRONICLE] Failed to load: {e}")
+        
+        # Load appeals data
+        appeals_path = self.persistence_path.replace('.json', '_appeals.json')
+        if os.path.exists(appeals_path):
+            try:
+                with open(appeals_path, 'r') as f:
+                    data = json.load(f)
+                    for item in data:
+                        self.appeals.append(AppealRecord(**item))
+                logger.info(f"[CHRONICLE] Loaded {len(self.appeals)} appeals")
+            except Exception as e:
+                logger.error(f"[CHRONICLE] Failed to load appeals: {e}")
 
     def _save(self):
         try:
@@ -180,6 +196,21 @@ class TheChronicle:
                 json.dump([obj.to_dict() for obj in self.memory], f, indent=2)
         except Exception as e:
             logger.error(f"[CHRONICLE] Failed to save: {e}")
+    
+    def _save_appeals(self):
+        """Save appeals to a separate file for clean separation."""
+        appeals_path = self.persistence_path.replace('.json', '_appeals.json')
+        try:
+            with open(appeals_path, 'w') as f:
+                json.dump([a.to_dict() for a in self.appeals], f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+        except Exception as e:
+            logger.error(f"[CHRONICLE] Failed to save appeals: {e}")
+            raise ChroniclePersistenceError(
+                case_id="APPEALS",
+                reason=f"Appeals persistence failed: {e}"
+            )
     
     # =========================================================================
     # WRITE OPERATIONS (Append-only, Elder-only in secured mode)
@@ -401,6 +432,102 @@ class TheChronicle:
             if case.case_id == case_id:
                 return case
         return None
+    
+    # =========================================================================
+    # APPEAL OPERATIONS (Due Process)
+    # =========================================================================
+    
+    def get_appeal_count(self, case_id: str) -> int:
+        """
+        Get how many times a case has been appealed.
+        Used for liability escalation calculation.
+        """
+        return sum(1 for a in self.appeals if a.original_case_id == case_id)
+    
+    def get_appeals_for_case(self, case_id: str) -> List[AppealRecord]:
+        """Get all appeals linked to a case."""
+        return [a for a in self.appeals if a.original_case_id == case_id]
+    
+    def persist_appeal(
+        self,
+        appeal: AppealRecord,
+        handle: ChronicleHandle
+    ) -> str:
+        """
+        Persist an appeal to the Chronicle.
+        
+        CONSTITUTIONAL INVARIANTS:
+            - Requires WRITER handle (Elder only)
+            - Appeals are append-only (no updates, no deletes)
+            - Appeal is linked to original case
+            - Increases liability metadata
+        
+        Args:
+            appeal: The AppealRecord to persist
+            handle: ChronicleHandle with WRITER role
+            
+        Returns:
+            The appeal_id of the persisted appeal
+            
+        Raises:
+            ChronicleAccessError: If handle is not a WRITER
+            ChroniclePersistenceError: If persistence fails
+        """
+        if not handle.can_write():
+            raise ChronicleAccessError(
+                attempted_by=handle.owner,
+                operation="PERSIST_APPEAL"
+            )
+        
+        try:
+            # Append to appeals list
+            self.appeals.append(appeal)
+            
+            # Update the original case's appeal_history
+            original = self.get_case_by_id(appeal.original_case_id)
+            if original:
+                original.appeal_history.append(appeal.appeal_id)
+                self._save()  # Save updated case
+            
+            # Save appeals
+            self._save_appeals()
+            
+            logger.info(
+                f"[CHRONICLE] Appeal {appeal.appeal_id} persisted "
+                f"(original: {appeal.original_case_id}, depth: {appeal.appeal_depth})"
+            )
+            
+            return appeal.appeal_id
+            
+        except ChroniclePersistenceError:
+            raise
+        except Exception as e:
+            logger.error(f"[CHRONICLE] CRITICAL: Appeal persistence failed: {e}")
+            raise ChroniclePersistenceError(
+                case_id=appeal.appeal_id,
+                reason=str(e)
+            ) from e
+    
+    def cite_precedent(self, case_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Cite a precedent during appeal deliberation.
+        
+        Returns the case as a citation-ready dict with citation metadata.
+        This is used during Senate re-evaluation to require explicit
+        Chronicle citations.
+        """
+        case = self.get_case_by_id(case_id)
+        if not case:
+            return None
+        
+        return {
+            "citation_id": case.case_id,
+            "cited_at": datetime.now().isoformat(),
+            "question": case.question,
+            "ruling": case.verdict.get("ruling", "UNKNOWN"),
+            "deliberation_summary": len(case.deliberation),
+            "appeal_count": len(case.appeal_history)
+        }
 
 
 # =============================================================================
