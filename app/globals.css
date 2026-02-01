@@ -1,0 +1,284 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* The Nest - Sovereign Dark Theme */
+    /* Deep void background with subtle warmth */
+    --background: 220 20% 4%;
+    --foreground: 45 10% 92%;
+    
+    /* Cards - Elevated surfaces with glass effect */
+    --card: 220 18% 7%;
+    --card-foreground: 45 10% 92%;
+    
+    /* Popover - Contextual overlays */
+    --popover: 220 20% 6%;
+    --popover-foreground: 45 10% 92%;
+    
+    /* Primary - Sovereign Gold (The Elder's Authority) */
+    --primary: 42 85% 55%;
+    --primary-foreground: 220 20% 4%;
+    
+    /* Secondary - Muted surfaces */
+    --secondary: 220 15% 12%;
+    --secondary-foreground: 45 10% 75%;
+    
+    /* Muted - Subtle backgrounds */
+    --muted: 220 15% 10%;
+    --muted-foreground: 220 10% 50%;
+    
+    /* Accent - Ethereal Cyan (Wisdom) */
+    --accent: 185 75% 45%;
+    --accent-foreground: 220 20% 4%;
+    
+    /* Destructive - Martial Red (State of Exception) */
+    --destructive: 0 75% 50%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Border & Input */
+    --border: 220 15% 15%;
+    --input: 220 15% 12%;
+    --ring: 42 85% 55%;
+    
+    /* Chart colors - Dragon Palette */
+    --chart-1: 42 85% 55%;   /* Sovereign Gold - Elder */
+    --chart-2: 185 75% 45%;  /* Ethereal Cyan - Ether */
+    --chart-3: 15 85% 55%;   /* Ember Orange - Ignis */
+    --chart-4: 145 65% 42%;  /* Verdant Green - Terra */
+    --chart-5: 280 65% 55%;  /* Obsidian Purple - Onyx */
+    
+    --radius: 0.5rem;
+    
+    /* Dragon Agent Colors */
+    --dragon-onyx: 280 65% 55%;
+    --dragon-ignis: 15 85% 55%;
+    --dragon-hydra: 200 85% 50%;
+    --dragon-ether: 185 75% 45%;
+    --dragon-terra: 145 65% 42%;
+    --dragon-aeros: 220 70% 60%;
+    
+    /* Status Colors */
+    --status-approved: 145 65% 42%;
+    --status-refused: 0 75% 50%;
+    --status-pending: 42 85% 55%;
+    --status-deliberating: 185 75% 45%;
+    
+    /* Glow Effects */
+    --glow-gold: 42 85% 55%;
+    --glow-cyan: 185 75% 45%;
+    --glow-red: 0 75% 50%;
+  }
+  
+  /* No light mode - The Nest operates in darkness */
+  .dark {
+    --background: 220 20% 4%;
+    --foreground: 45 10% 92%;
+    --card: 220 18% 7%;
+    --card-foreground: 45 10% 92%;
+    --popover: 220 20% 6%;
+    --popover-foreground: 45 10% 92%;
+    --primary: 42 85% 55%;
+    --primary-foreground: 220 20% 4%;
+    --secondary: 220 15% 12%;
+    --secondary-foreground: 45 10% 75%;
+    --muted: 220 15% 10%;
+    --muted-foreground: 220 10% 50%;
+    --accent: 185 75% 45%;
+    --accent-foreground: 220 20% 4%;
+    --destructive: 0 75% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 15%;
+    --input: 220 15% 12%;
+    --ring: 42 85% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Custom scrollbar for the sovereign aesthetic */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}
+
+@layer utilities {
+  /* Atmospheric glow effects */
+  .glow-gold {
+    box-shadow: 
+      0 0 20px -5px hsl(var(--glow-gold) / 0.3),
+      0 0 40px -10px hsl(var(--glow-gold) / 0.2);
+  }
+  
+  .glow-cyan {
+    box-shadow: 
+      0 0 20px -5px hsl(var(--glow-cyan) / 0.3),
+      0 0 40px -10px hsl(var(--glow-cyan) / 0.2);
+  }
+  
+  .glow-red {
+    box-shadow: 
+      0 0 20px -5px hsl(var(--glow-red) / 0.4),
+      0 0 40px -10px hsl(var(--glow-red) / 0.3);
+  }
+  
+  /* Dragon-specific glows */
+  .glow-onyx {
+    box-shadow: 0 0 30px -5px hsl(var(--dragon-onyx) / 0.4);
+  }
+  
+  .glow-ignis {
+    box-shadow: 0 0 30px -5px hsl(var(--dragon-ignis) / 0.4);
+  }
+  
+  .glow-hydra {
+    box-shadow: 0 0 30px -5px hsl(var(--dragon-hydra) / 0.4);
+  }
+  
+  .glow-ether {
+    box-shadow: 0 0 30px -5px hsl(var(--dragon-ether) / 0.4);
+  }
+  
+  .glow-terra {
+    box-shadow: 0 0 30px -5px hsl(var(--dragon-terra) / 0.4);
+  }
+  
+  .glow-aeros {
+    box-shadow: 0 0 30px -5px hsl(var(--dragon-aeros) / 0.4);
+  }
+  
+  /* Glassmorphism panels */
+  .glass {
+    @apply bg-card/60 backdrop-blur-xl border border-border/50;
+  }
+  
+  .glass-intense {
+    @apply bg-card/80 backdrop-blur-2xl border border-border/70;
+  }
+  
+  /* Dramatic text effects */
+  .text-glow {
+    text-shadow: 0 0 20px currentColor;
+  }
+  
+  .text-glow-sm {
+    text-shadow: 0 0 10px currentColor;
+  }
+  
+  /* Noise texture overlay */
+  .noise {
+    position: relative;
+  }
+  
+  .noise::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+  
+  /* Animated border gradient */
+  .border-gradient {
+    position: relative;
+    background: hsl(var(--card));
+    border-radius: var(--radius);
+  }
+  
+  .border-gradient::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: calc(var(--radius) + 1px);
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.5),
+      transparent 40%,
+      transparent 60%,
+      hsl(var(--accent) / 0.3)
+    );
+    z-index: -1;
+  }
+  
+  /* Pulse animations for status indicators */
+  .pulse-gold {
+    animation: pulse-gold 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse-gold {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 8px hsl(var(--primary) / 0);
+    }
+  }
+  
+  .pulse-cyan {
+    animation: pulse-cyan 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse-cyan {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(var(--accent) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 8px hsl(var(--accent) / 0);
+    }
+  }
+  
+  .pulse-red {
+    animation: pulse-red 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes pulse-red {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(var(--destructive) / 0.5);
+    }
+    50% {
+      box-shadow: 0 0 0 10px hsl(var(--destructive) / 0);
+    }
+  }
+  
+  /* Grid background pattern */
+  .grid-pattern {
+    background-image: 
+      linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+  
+  /* Radial gradient overlay for depth */
+  .radial-overlay {
+    background: radial-gradient(
+      ellipse 80% 50% at 50% 0%,
+      hsl(var(--primary) / 0.05),
+      transparent 50%
+    );
+  }
+}
