@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: oklch(0.12 0.01 260);
+  --color-foreground: oklch(0.93 0.02 90);
+  --color-card: oklch(0.14 0.01 260);
+  --color-card-foreground: oklch(0.93 0.02 90);
+  --color-primary: oklch(0.78 0.12 75);
+  --color-primary-foreground: oklch(0.15 0.01 260);
+  --color-secondary: oklch(0.22 0.01 260);
+  --color-secondary-foreground: oklch(0.93 0.02 90);
+  --color-muted: oklch(0.22 0.01 260);
+  --color-muted-foreground: oklch(0.65 0.02 90);
+  --color-accent: oklch(0.22 0.01 260);
+  --color-accent-foreground: oklch(0.93 0.02 90);
+  --color-destructive: oklch(0.65 0.2 25);
+  --color-destructive-foreground: oklch(0.98 0.01 90);
+  --color-border: oklch(0.25 0.01 260);
+  --color-input: oklch(0.25 0.01 260);
+  --color-ring: oklch(0.78 0.12 75);
+  
+  --color-onyx: oklch(0.65 0.25 300);
+  --color-ignis: oklch(0.72 0.2 50);
+  --color-hydra: oklch(0.7 0.2 145);
+  --color-amber: oklch(0.78 0.12 75);
+  
+  --radius: 0.625rem;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes flow {
+  0% { stroke-dashoffset: 20; }
+  100% { stroke-dashoffset: 0; }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-flow {
+  animation: flow 1s linear infinite;
+}
+
+.glass-panel {
+  background: oklch(0.12 0.01 260 / 0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid oklch(1 0 0 / 0.08);
+}
+
+.terminal-glow {
+  text-shadow: 0 0 8px currentColor;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: oklch(1 0 0 / 0.02);
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 0.1);
+  border-radius: 3px;
+}
