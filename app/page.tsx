@@ -1,5 +1,6 @@
 "use client"
 
+// Force rebuild - v1
 import { useState, useRef, useEffect } from "react"
 import type React from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -8,6 +9,7 @@ import {
   Check, X, Loader2, Send, Sparkles, CheckCircle2, 
   XCircle, AlertTriangle, Clock, Activity
 } from "lucide-react"
+
 // ============ UTILITIES ============
 function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(" ")
